@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { Plus, Tag, FolderTree } from 'lucide-react';
+import { Plus, Tag, FolderTree, Trash2, TriangleAlert as AlertTriangle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader, EmptyState } from '@/components/Shared';
 import { Modal } from '@/components/Modal';
+import type { Category } from '@/types';
 
 export function AdminCategories() {
-  const { categories, addCategory } = useApp();
+  const { categories, addCategory, deleteCategory } = useApp();
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ name: '', description: '' });
+  const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +36,12 @@ export function AdminCategories() {
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zubkas-50">
                   <Tag className="h-5 w-5 text-zubkas-700" />
                 </div>
-                <span className="badge badge-zubkas">{c.partnerCount} partners</span>
+                <div className="flex items-center gap-1">
+                  <span className="badge badge-zubkas">{c.partnerCount} partners</span>
+                  <button onClick={() => setDeleteTarget(c)} className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors" title="Delete category">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
               <h3 className="mt-3 font-display font-semibold text-gray-900">{c.name}</h3>
               <p className="mt-1 text-sm text-gray-500">{c.description}</p>
@@ -55,6 +62,33 @@ export function AdminCategories() {
           </div>
           <button type="submit" className="btn-primary w-full">Add Category</button>
         </form>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete Category" size="sm">
+        {deleteTarget && (
+          <div className="space-y-4">
+            <div className="rounded-lg bg-red-50 border border-red-200 p-4 flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-red-900">This action cannot be undone.</p>
+                <p className="text-xs text-red-700 mt-1">
+                  Category <span className="font-semibold">{deleteTarget.name}</span> will be permanently removed. Partners currently assigned to this category will need to be reassigned.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteTarget(null)} className="btn-ghost flex-1">Cancel</button>
+              <button
+                onClick={() => { deleteCategory(deleteTarget.id); setDeleteTarget(null); }}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-red-700 active:scale-[0.98] flex-1"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete Category
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

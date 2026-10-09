@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Megaphone, Plus, Pin, Package, Bell, Wrench, Info } from 'lucide-react';
+import { Megaphone, Plus, Pin, Package, Bell, Wrench, Info, Trash2, TriangleAlert as AlertTriangle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader, EmptyState } from '@/components/Shared';
 import { Modal } from '@/components/Modal';
@@ -14,9 +14,10 @@ const typeConfig: Record<Announcement['type'], { icon: typeof Package; color: st
 };
 
 export function AdminAnnouncements() {
-  const { announcements, addAnnouncement } = useApp();
+  const { announcements, addAnnouncement, deleteAnnouncement } = useApp();
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ title: '', content: '', type: 'product' as Announcement['type'] });
+  const [deleteTarget, setDeleteTarget] = useState<Announcement | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,6 +64,9 @@ export function AdminAnnouncements() {
                       <span>{formatDate(a.date)}</span>
                     </div>
                   </div>
+                  <button onClick={() => setDeleteTarget(a)} className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors shrink-0" title="Delete announcement">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
             );
@@ -94,6 +98,33 @@ export function AdminAnnouncements() {
           </div>
           <button type="submit" className="btn-primary w-full">Publish Announcement</button>
         </form>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete Announcement" size="sm">
+        {deleteTarget && (
+          <div className="space-y-4">
+            <div className="rounded-lg bg-red-50 border border-red-200 p-4 flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-red-900">This action cannot be undone.</p>
+                <p className="text-xs text-red-700 mt-1">
+                  Announcement <span className="font-semibold">{deleteTarget.title}</span> will be permanently removed and will no longer appear in partner feeds.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteTarget(null)} className="btn-ghost flex-1">Cancel</button>
+              <button
+                onClick={() => { deleteAnnouncement(deleteTarget.id); setDeleteTarget(null); }}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-red-700 active:scale-[0.98] flex-1"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete Announcement
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

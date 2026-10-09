@@ -42,10 +42,16 @@ interface AppContextValue {
   addPartner: (p: Omit<Partner, 'id' | 'totalCommission' | 'monthlyCommission' | 'pendingCommission' | 'activeCustomers' | 'monthlySales'>) => void;
   deletePartner: (id: string) => void;
   addEmployee: (e: Omit<Employee, 'id'>) => void;
+  deleteEmployee: (id: string) => void;
   addCategory: (c: Omit<Category, 'id' | 'partnerCount'>) => void;
+  deleteCategory: (id: string) => void;
   addPlan: (p: Omit<Plan, 'id'>) => void;
+  deletePlan: (id: string) => void;
   addProduct: (p: Omit<Product, 'id'>) => void;
+  deleteProduct: (id: string) => void;
   addAnnouncement: (a: Omit<Announcement, 'id' | 'date' | 'author' | 'authorRole' | 'isPinned'>) => void;
+  deleteAnnouncement: (id: string) => void;
+  deleteLead: (id: string) => void;
   addLead: (l: Omit<Lead, 'id' | 'submittedDate' | 'lockEndDate' | 'status' | 'partnerName'>) => boolean;
   markNotificationRead: (id: string) => void;
   markAllRead: () => void;
@@ -121,17 +127,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setEmployees(prev => [...prev, { ...e, id: `emp-${Date.now()}` }]);
   }, [setEmployees]);
 
+  const deleteEmployee: AppContextValue['deleteEmployee'] = useCallback((id) => {
+    setEmployees(prev => prev.filter(e => e.id !== id));
+  }, [setEmployees]);
+
   const addCategory: AppContextValue['addCategory'] = useCallback((c) => {
     setCategories(prev => [...prev, { ...c, id: `cat-${Date.now()}`, partnerCount: 0 }]);
+  }, [setCategories]);
+
+  const deleteCategory: AppContextValue['deleteCategory'] = useCallback((id) => {
+    setCategories(prev => prev.filter(c => c.id !== id));
   }, [setCategories]);
 
   const addPlan: AppContextValue['addPlan'] = useCallback((p) => {
     setPlans(prev => [...prev, { ...p, id: `plan-${Date.now()}`, isCustom: true }]);
   }, [setPlans]);
 
+  const deletePlan: AppContextValue['deletePlan'] = useCallback((id) => {
+    setPlans(prev => prev.filter(p => p.id !== id));
+  }, [setPlans]);
+
   const addProduct: AppContextValue['addProduct'] = useCallback((p) => {
     setProducts(prev => [...prev, { ...p, id: `prod-${Date.now()}` }]);
   }, [setProducts]);
+
+  const deleteProduct: AppContextValue['deleteProduct'] = useCallback((id) => {
+    setProducts(prev => prev.filter(p => p.id !== id));
+  }, [setProducts]);
+
+  const deleteLead: AppContextValue['deleteLead'] = useCallback((id) => {
+    setLeads(prev => prev.filter(l => l.id !== id));
+  }, [setLeads]);
 
   const addAnnouncement: AppContextValue['addAnnouncement'] = useCallback((a) => {
     const newAnn: Announcement = {
@@ -148,6 +174,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       { id: `n-${Date.now()}`, userId: 'broadcast', title: 'New Announcement', message: a.title, type: 'announcement', date: newAnn.date, read: false },
     ]);
   }, [currentUser, setAnnouncements, setNotifications]);
+
+  const deleteAnnouncement: AppContextValue['deleteAnnouncement'] = useCallback((id) => {
+    setAnnouncements(prev => prev.filter(a => a.id !== id));
+    setNotifications(prev => prev.filter(n => n.message !== announcements.find(a => a.id === id)?.title));
+  }, [announcements, setAnnouncements, setNotifications]);
 
   const addLead: AppContextValue['addLead'] = useCallback((l) => {
     let success = true;
@@ -253,7 +284,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     <AppContext.Provider value={{
       currentUser, login, loginOtp, logout,
       partners, customers, leads, employees, categories, announcements, notifications, plans, products, settings, siteContent, transactions,
-      addPartner, deletePartner, addEmployee, addCategory, addPlan, addProduct, addAnnouncement, addLead,
+      addPartner, deletePartner, addEmployee, deleteEmployee, addCategory, deleteCategory, addPlan, deletePlan, addProduct, deleteProduct, addAnnouncement, deleteAnnouncement, addLead, deleteLead,
       markNotificationRead, markAllRead, updateSettings, updateSiteContent, resetSiteContent,
       clearDemoData, resetAllData, updateUserProfile, updateUserPassword,
     }}>

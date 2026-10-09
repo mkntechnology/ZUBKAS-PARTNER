@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Search, Lock, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Search, Lock, CheckCircle2, XCircle, Clock, Trash2, TriangleAlert as AlertTriangle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader, EmptyState } from '@/components/Shared';
+import { Modal } from '@/components/Modal';
 import { formatDate, daysUntil } from '@/utils/helpers';
+import type { Lead } from '@/types';
 
 const statusConfig = {
   Locked: { icon: Lock, badge: 'badge-warning', text: 'text-amber-700' },
@@ -12,9 +14,10 @@ const statusConfig = {
 };
 
 export function AdminLeads() {
-  const { leads } = useApp();
+  const { leads, deleteLead } = useApp();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null);
 
   const filtered = leads.filter(l =>
     (l.companyName.toLowerCase().includes(search.toLowerCase()) || l.partnerName.toLowerCase().includes(search.toLowerCase())) &&
@@ -72,6 +75,7 @@ export function AdminLeads() {
                   <th className="px-4 py-3 text-left font-medium text-gray-500">Lock Ends</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500">Status</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500">Notes</th>
+                  <th className="px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody>
@@ -102,6 +106,11 @@ export function AdminLeads() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-500 text-xs max-w-xs truncate">{l.notes}</td>
+                      <td className="px-4 py-3">
+                        <button onClick={() => setDeleteTarget(l)} className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors" title="Delete lead">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -110,6 +119,33 @@ export function AdminLeads() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete Lead" size="sm">
+        {deleteTarget && (
+          <div className="space-y-4">
+            <div className="rounded-lg bg-red-50 border border-red-200 p-4 flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-red-900">This action cannot be undone.</p>
+                <p className="text-xs text-red-700 mt-1">
+                  The lead for <span className="font-semibold">{deleteTarget.companyName}</span> (contact: {deleteTarget.contactName}) will be permanently removed from the system.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteTarget(null)} className="btn-ghost flex-1">Cancel</button>
+              <button
+                onClick={() => { deleteLead(deleteTarget.id); setDeleteTarget(null); }}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-red-700 active:scale-[0.98] flex-1"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete Lead
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

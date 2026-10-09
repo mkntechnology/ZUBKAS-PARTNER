@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mail, Lock, ArrowRight, Shield, User, KeyRound, Sparkles, Eye, EyeOff, ArrowLeft, CheckCircle2, TrendingUp, Users, DollarSign, Crown } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Shield, User, KeyRound, Sparkles, Eye, EyeOff, ArrowLeft, CircleCheck as CheckCircle2, TrendingUp, Users, DollarSign, Crown } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 
 type LoginMode = 'partner' | 'admin';
@@ -21,13 +21,40 @@ export function LoginPage({ onBack }: LoginPageProps) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const partnerDemoAccounts = [
+    { email: 'partner@zubkas.com', label: 'Vikram Singh' },
+    { email: 'neha@zubkas.com', label: 'Neha Gupta' },
+  ];
+
+  const adminDemoAccounts = [
+    { email: 'admin@zubkas.com', label: 'Rajesh Kumar' },
+    { email: 'employee@zubkas.com', label: 'Priya Sharma' },
+  ];
+
+  const partnerEmails = ['partner@zubkas.com', 'neha@zubkas.com', 'rahul@zubkas.com', 'anita@zubkas.com', 'suresh@zubkas.com'];
+  const adminEmails = ['admin@zubkas.com', 'employee@zubkas.com', 'support@zubkas.com'];
+
+  const validateMode = (emailToCheck: string): boolean => {
+    const lower = emailToCheck.toLowerCase();
+    if (mode === 'partner' && adminEmails.includes(lower)) {
+      setError('This is an admin account. Switch to the Admin tab to sign in.');
+      return false;
+    }
+    if (mode === 'admin' && partnerEmails.includes(lower)) {
+      setError('This is a partner account. Switch to the Partner tab to sign in.');
+      return false;
+    }
+    return true;
+  };
+
   const handlePasswordLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (!validateMode(email)) return;
     setLoading(true);
     setTimeout(() => {
       const success = login(email, password);
-      if (!success) setError('Invalid email or password. Try the demo accounts below.');
+      if (!success) setError('Invalid email or password. Use a demo account below to try it out.');
       setLoading(false);
     }, 500);
   };
@@ -35,10 +62,11 @@ export function LoginPage({ onBack }: LoginPageProps) {
   const handleSendOtp = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (!validateMode(email)) return;
     setLoading(true);
     setTimeout(() => {
-      const validEmails = ['partner@zubkas.com', 'neha@zubkas.com', 'rahul@zubkas.com', 'anita@zubkas.com', 'suresh@zubkas.com', 'admin@zubkas.com', 'employee@zubkas.com', 'support@zubkas.com'];
-      if (validEmails.includes(email.toLowerCase())) {
+      const allEmails = [...partnerEmails, ...adminEmails];
+      if (allEmails.includes(email.toLowerCase())) {
         setOtpSent(true);
       } else {
         setError('No account found with this email.');
@@ -68,6 +96,12 @@ export function LoginPage({ onBack }: LoginPageProps) {
     setPassword('');
     setOtp('');
     setOtpSent(false);
+    setError('');
+  };
+
+  const fillDemoAccount = (demoEmail: string) => {
+    setEmail(demoEmail);
+    setPassword('demo1234');
     setError('');
   };
 
@@ -313,6 +347,24 @@ export function LoginPage({ onBack }: LoginPageProps) {
                 </button>
               </form>
             )}
+
+            {/* Demo accounts */}
+            <div className="mt-6 border-t border-gray-100 pt-4">
+              <p className="text-xs font-medium text-gray-400 mb-2">Demo accounts — click to auto-fill:</p>
+              <div className="flex flex-wrap gap-2">
+                {(mode === 'partner' ? partnerDemoAccounts : adminDemoAccounts).map(acc => (
+                  <button
+                    key={acc.email}
+                    type="button"
+                    onClick={() => fillDemoAccount(acc.email)}
+                    className="rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs text-gray-600 transition-all hover:border-zubkas-300 hover:bg-zubkas-50 hover:text-zubkas-700"
+                  >
+                    {acc.label}
+                    <span className="block text-[10px] text-gray-400">{acc.email}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
 
           </div>
         </div>

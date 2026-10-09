@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Package, Plus, CheckCircle2, Sparkles, Briefcase, BarChart3, HardHat, CreditCard, Wallet, Users, Trash2, X, DollarSign, Percent, Tag } from 'lucide-react';
+import { Package, Plus, CheckCircle2, Sparkles, Briefcase, BarChart3, HardHat, CreditCard, Wallet, Users, Trash2, X, DollarSign, Percent, Tag, TriangleAlert as AlertTriangle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader, EmptyState } from '@/components/Shared';
 import { Modal } from '@/components/Modal';
@@ -45,9 +45,10 @@ const emptyForm: FormState = {
 };
 
 export function AdminProducts() {
-  const { products, addProduct } = useApp();
+  const { products, addProduct, deleteProduct } = useApp();
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,7 +92,12 @@ export function AdminProducts() {
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zubkas-50">
                     <Icon className="h-5 w-5 text-zubkas-700" />
                   </div>
-                  <span className={`badge ${p.status === 'Active' ? 'badge-success' : p.status === 'Beta' ? 'badge-warning' : 'badge-neutral'}`}>{p.status}</span>
+                  <div className="flex items-center gap-1">
+                    <span className={`badge ${p.status === 'Active' ? 'badge-success' : p.status === 'Beta' ? 'badge-warning' : 'badge-neutral'}`}>{p.status}</span>
+                    <button onClick={() => setDeleteTarget(p)} className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors" title="Delete product">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
                 <h3 className="mt-3 font-display font-semibold text-gray-900">{p.name}</h3>
                 <p className="mt-1 text-sm text-gray-500 flex-1">{p.description}</p>
@@ -268,6 +274,33 @@ export function AdminProducts() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete Product" size="sm">
+        {deleteTarget && (
+          <div className="space-y-4">
+            <div className="rounded-lg bg-red-50 border border-red-200 p-4 flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-red-900">This action cannot be undone.</p>
+                <p className="text-xs text-red-700 mt-1">
+                  Product <span className="font-semibold">{deleteTarget.name}</span> will be permanently removed from the product suite and will no longer be available for partner referrals.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteTarget(null)} className="btn-ghost flex-1">Cancel</button>
+              <button
+                onClick={() => { deleteProduct(deleteTarget.id); setDeleteTarget(null); }}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-red-700 active:scale-[0.98] flex-1"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete Product
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );
