@@ -1,17 +1,20 @@
 import { useState } from 'react';
-import { Settings as SettingsIcon, Save, Lock, Trash2, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Lock, Trash2, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle2, RotateCcw } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader } from '@/components/Shared';
 import { Modal } from '@/components/Modal';
 
 export function AdminSettings() {
-  const { settings, updateSettings, clearDemoData } = useApp();
+  const { settings, updateSettings, clearDemoData, resetAllData } = useApp();
   const [leadLock, setLeadLock] = useState(String(settings.leadLockDays));
   const [capMonths, setCapMonths] = useState(String(settings.commissionCapMonths));
   const [saved, setSaved] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [clearConfirmText, setClearConfirmText] = useState('');
   const [cleared, setCleared] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState('');
+  const [resetDone, setResetDone] = useState(false);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,6 +29,14 @@ export function AdminSettings() {
     setClearConfirmText('');
     setCleared(true);
     setTimeout(() => setCleared(false), 3000);
+  };
+
+  const handleResetData = () => {
+    resetAllData();
+    setShowResetConfirm(false);
+    setResetConfirmText('');
+    setResetDone(true);
+    setTimeout(() => setResetDone(false), 3000);
   };
 
   return (
@@ -108,9 +119,31 @@ export function AdminSettings() {
             </div>
           )}
         </div>
+
+        <div className="mt-4 rounded-lg border border-amber-200 bg-white p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-900">Reset All Application Data</p>
+              <p className="text-xs text-gray-500 mt-0.5">Restores all partners, customers, leads, employees, plans, products, announcements, and settings to their original demo state.</p>
+            </div>
+            <button
+              onClick={() => setShowResetConfirm(true)}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-amber-300 bg-white px-4 py-2.5 text-sm font-semibold text-amber-700 transition-all hover:bg-amber-50 active:scale-[0.98] shrink-0"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Reset Data
+            </button>
+          </div>
+          {resetDone && (
+            <div className="mt-3 flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700 animate-fade-in">
+              <CheckCircle2 className="h-4 w-4" />
+              All application data has been reset to defaults successfully.
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Confirmation Modal */}
+      {/* Clear Confirmation Modal */}
       <Modal open={showClearConfirm} onClose={() => { setShowClearConfirm(false); setClearConfirmText(''); }} title="Confirm: Clear All Demo Data" size="sm">
         <div className="space-y-4">
           <div className="rounded-lg bg-red-50 border border-red-200 p-4 flex items-start gap-3">
@@ -145,6 +178,46 @@ export function AdminSettings() {
             >
               <Trash2 className="h-4 w-4" />
               Delete All Data
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Reset Confirmation Modal */}
+      <Modal open={showResetConfirm} onClose={() => { setShowResetConfirm(false); setResetConfirmText(''); }} title="Confirm: Reset All Application Data" size="sm">
+        <div className="space-y-4">
+          <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 flex items-start gap-3">
+            <RotateCcw className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-amber-900">This will restore all original demo data.</p>
+              <p className="text-xs text-amber-700 mt-1">All partners, customers, leads, employees, plans, products, announcements, and settings will be restored to their default values. Any custom data you added will be lost.</p>
+            </div>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700">
+              Type <span className="font-bold text-amber-600">RESET</span> to confirm
+            </label>
+            <input
+              value={resetConfirmText}
+              onChange={(e) => setResetConfirmText(e.target.value)}
+              className="input-field mt-1"
+              placeholder="RESET"
+            />
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => { setShowResetConfirm(false); setResetConfirmText(''); }}
+              className="btn-ghost flex-1"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleResetData}
+              disabled={resetConfirmText !== 'RESET'}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-amber-700 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed flex-1"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Reset to Defaults
             </button>
           </div>
         </div>

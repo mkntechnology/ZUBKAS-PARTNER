@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UserPlus, Search, MoreVertical, Crown, Star, Award, Rocket, Trash2, Eye } from 'lucide-react';
+import { UserPlus, Search, Crown, Star, Award, Rocket, Trash2, Eye, TriangleAlert as AlertTriangle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader, EmptyState } from '@/components/Shared';
 import { Modal } from '@/components/Modal';
@@ -9,11 +9,13 @@ import type { Partner } from '@/types';
 const badgeIcons: Record<string, typeof Crown> = { 'Top Performer': Crown, 'Rising Star': Star, 'Consistent Earner': Award, 'New Champion': Rocket };
 
 export function AdminPartners() {
-  const { partners, customers, categories, addPartner } = useApp();
+  const { partners, customers, leads, transactions, categories, addPartner, deletePartner } = useApp();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [showAdd, setShowAdd] = useState(false);
   const [viewPartner, setViewPartner] = useState<Partner | null>(null);
+  const [deletePartnerTarget, setDeletePartnerTarget] = useState<Partner | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', category: categories[0]?.name ?? '' });
 
@@ -90,9 +92,14 @@ export function AdminPartners() {
                     <td className="px-4 py-3"><span className={`badge ${p.status === 'Active' ? 'badge-success' : p.status === 'Suspended' ? 'badge-error' : 'badge-warning'}`}>{p.status}</span></td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{formatDate(p.joinedDate)}</td>
                     <td className="px-4 py-3">
-                      <button onClick={() => setViewPartner(p)} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-zubkas-700 transition-colors">
-                        <Eye className="h-4 w-4" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => setViewPartner(p)} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-zubkas-700 transition-colors" title="View details">
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <button onClick={() => { setDeletePartnerTarget(p); setDeleteConfirmText(''); }} className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors" title="Delete partner">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -178,6 +185,60 @@ export function AdminPartners() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal open={!!deletePartnerTarget} onClose={() => { setDeletePartnerTarget(null); setDeleteConfirmText(''); }} title="Delete Partner Account" size="sm">
+        {deletePartnerTarget && (
+          <div className="space-y-4">
+            <div className="rounded-lg bg-red-50 border border-red-200 p-4 flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-red-900">This action cannot be undone.</p>
+                <p className="text-xs text-red-700 mt-1">
+                  Deleting <span className="font-semibold">{deletePartnerTarget.name}</span> ({deletePartnerTarget.company}) will permanently remove:
+                </p>
+                <ul className="mt-2 space-y-0.5 text-xs text-red-700">
+                  <li>• {customers.filter(c => c.partnerId === deletePartnerTarget.id).length} customer record(s)</li>
+                  <li>• {leads.filter(l => l.partnerId === deletePartnerTarget.id).length} lead record(s)</li>
+                  <li>• {transactions.filter(t => t.partnerId === deletePartnerTarget.id).length} commission transaction(s)</li>
+                  <li>• All associated notifications</li>
+                </ul>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">
+                Type <span className="font-bold text-red-600">DELETE</span> to confirm
+              </label>
+              <input
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                className="input-field mt-1"
+                placeholder="DELETE"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setDeletePartnerTarget(null); setDeleteConfirmText(''); }}
+                className="btn-ghost flex-1"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  deletePartner(deletePartnerTarget.id);
+                  setDeletePartnerTarget(null);
+                  setDeleteConfirmText('');
+                }}
+                disabled={deleteConfirmText !== 'DELETE'}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-red-700 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed flex-1"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete Permanently
+              </button>
             </div>
           </div>
         )}

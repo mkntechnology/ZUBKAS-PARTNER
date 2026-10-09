@@ -1,9 +1,6 @@
-import { useState } from 'react';
-import {
-  LayoutDashboard, Users, Settings, FolderTree, Layers,
-  Megaphone, Trophy, Target, Bell, User as UserIcon,
-  DollarSign, Package, UserCircle, Type,
-} from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { usePersistentState } from '@/utils/usePersistentState';
+import { LayoutDashboard, Users, Settings, FolderTree, Layers, Megaphone, Trophy, Target, Bell, User as UserIcon, DollarSign, Package, CircleUser as UserCircle, Type } from 'lucide-react';
 import { AppProvider, useApp } from '@/context/AppContext';
 import { AppLayout } from '@/components/AppLayout';
 import { LandingPage } from '@/pages/LandingPage';
@@ -63,7 +60,7 @@ const partnerNavItems = [
 
 function AdminPortal() {
   const { currentUser, notifications } = useApp();
-  const [page, setPage] = useState('dashboard');
+  const [page, setPage] = usePersistentState<string>('zubkas_admin_page', 'dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const unreadCount = notifications.filter(n => (n.userId === 'admin' || n.userId === 'broadcast') && !n.read).length;
@@ -108,7 +105,7 @@ function AdminPortal() {
 
 function PartnerPortal() {
   const { currentUser, notifications } = useApp();
-  const [page, setPage] = useState('dashboard');
+  const [page, setPage] = usePersistentState<string>('zubkas_partner_page', 'dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const unreadCount = notifications.filter(n =>
@@ -151,12 +148,19 @@ function PartnerPortal() {
 }
 
 function AppContent() {
-  const { currentUser } = useApp();
+  const { currentUser, logout } = useApp();
   const [showLogin, setShowLogin] = useState(false);
+
+  useEffect(() => {
+    if (!currentUser) {
+      localStorage.removeItem('zubkas_admin_page');
+      localStorage.removeItem('zubkas_partner_page');
+    }
+  }, [currentUser]);
 
   if (!currentUser && !showLogin) return <LandingPage onSignIn={() => setShowLogin(true)} />;
   if (!currentUser && showLogin) return <LoginPage onBack={() => setShowLogin(false)} />;
-  if (currentUser.role === 'admin' || currentUser.role === 'employee') return <AdminPortal />;
+  if (currentUser!.role === 'admin' || currentUser!.role === 'employee') return <AdminPortal />;
   return <PartnerPortal />;
 }
 
