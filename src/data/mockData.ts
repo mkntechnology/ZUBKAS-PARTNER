@@ -1,8 +1,30 @@
 import type {
   User, Partner, Customer, Lead, Employee, Category,
   Announcement, Product, Notification, Plan, AppSettings,
-  CommissionTransaction, SiteContent,
+  CommissionTransaction, SiteContent, Role,
 } from '@/types';
+
+export const allAdminSections: { key: import('@/types').AdminSectionKey; label: string }[] = [
+  { key: 'dashboard', label: 'Dashboard' },
+  { key: 'partners', label: 'Partners' },
+  { key: 'leads', label: 'Leads' },
+  { key: 'employees', label: 'Employees' },
+  { key: 'categories', label: 'Categories' },
+  { key: 'plans', label: 'Plans & Rates' },
+  { key: 'products', label: 'Products' },
+  { key: 'content', label: 'Content Manager' },
+  { key: 'announcements', label: 'Announcements' },
+  { key: 'leaderboard', label: 'Leaderboard' },
+  { key: 'settings', label: 'Settings' },
+  { key: 'roles', label: 'Roles & Permissions' },
+];
+
+export const defaultRoles: Role[] = [
+  { id: 'role-full-admin', name: 'Full Access', description: 'Full access to all admin panel sections', permissions: ['dashboard','partners','leads','employees','categories','plans','products','content','announcements','leaderboard','settings','roles'], isDefault: true },
+  { id: 'role-partner-manager', name: 'Partner Manager', description: 'Manage partners, leads, and view dashboard', permissions: ['dashboard','partners','leads','leaderboard'], isDefault: true },
+  { id: 'role-support-lead', name: 'Support Lead', description: 'Handle announcements and view leaderboard', permissions: ['dashboard','announcements','leaderboard'], isDefault: true },
+  { id: 'role-onboarding', name: 'Onboarding Specialist', description: 'View dashboard and manage announcements', permissions: ['dashboard','announcements'], isDefault: true },
+];
 
 export const plans: Plan[] = [
   { id: 'plan-free', name: 'Free Plan', commissionRate: 5, type: 'Monthly', description: 'Starter plan with 5% commission rate' },
@@ -87,10 +109,10 @@ export const leads: Lead[] = [
 ];
 
 export const employees: Employee[] = [
-  { id: 'emp-1', name: 'Priya Sharma', email: 'employee@zubkas.com', role: 'Partner Manager', status: 'Active', joinedDate: '2024-03-15' },
-  { id: 'emp-2', name: 'Arjun Mehta', email: 'support@zubkas.com', role: 'Support Lead', status: 'Active', joinedDate: '2024-05-20' },
-  { id: 'emp-3', name: 'Divya Krishnan', email: 'divya@zubkas.com', role: 'Onboarding Specialist', status: 'Active', joinedDate: '2025-02-01' },
-  { id: 'emp-4', name: 'Siddharth Roy', email: 'sid@zubkas.com', role: 'Account Manager', status: 'Inactive', joinedDate: '2024-09-10' },
+  { id: 'emp-1', name: 'Priya Sharma', email: 'employee@zubkas.com', role: 'Partner Manager', roleId: 'role-partner-manager', status: 'Active', joinedDate: '2024-03-15' },
+  { id: 'emp-2', name: 'Arjun Mehta', email: 'support@zubkas.com', role: 'Support Lead', roleId: 'role-support-lead', status: 'Active', joinedDate: '2024-05-20' },
+  { id: 'emp-3', name: 'Divya Krishnan', email: 'divya@zubkas.com', role: 'Onboarding Specialist', roleId: 'role-onboarding', status: 'Active', joinedDate: '2025-02-01' },
+  { id: 'emp-4', name: 'Siddharth Roy', email: 'sid@zubkas.com', role: 'Account Manager', roleId: 'role-partner-manager', status: 'Inactive', joinedDate: '2024-09-10' },
 ];
 
 export const categories: Category[] = [

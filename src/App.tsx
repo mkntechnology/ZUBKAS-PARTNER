@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { usePersistentState } from '@/utils/usePersistentState';
-import { LayoutDashboard, Users, Settings, FolderTree, Layers, Megaphone, Trophy, Target, Bell, User as UserIcon, DollarSign, Package, CircleUser as UserCircle, Type } from 'lucide-react';
+import { LayoutDashboard, Users, Settings, FolderTree, Layers, Megaphone, Trophy, Target, Bell, User as UserIcon, DollarSign, Package, CircleUser as UserCircle, Type, ShieldCheck } from 'lucide-react';
 import { AppProvider, useApp } from '@/context/AppContext';
 import { AppLayout } from '@/components/AppLayout';
 import { LandingPage } from '@/pages/LandingPage';
@@ -19,6 +19,7 @@ import { AdminLeaderboard } from '@/pages/admin/AdminLeaderboard';
 import { AdminSettings } from '@/pages/admin/AdminSettings';
 import { AdminContentManager } from '@/pages/admin/AdminContentManager';
 import { AdminProfile } from '@/pages/admin/AdminProfile';
+import { AdminRoles } from '@/pages/admin/AdminRoles';
 
 // Partner pages
 import { PartnerDashboard } from '@/pages/partner/PartnerDashboard';
@@ -42,6 +43,7 @@ const adminNavItems = [
   { key: 'content', label: 'Content Manager', icon: Type },
   { key: 'announcements', label: 'Announcements', icon: Megaphone },
   { key: 'leaderboard', label: 'Leaderboard', icon: Trophy },
+  { key: 'roles', label: 'Roles & Permissions', icon: ShieldCheck },
   { key: 'settings', label: 'Settings', icon: Settings },
   { key: 'profile', label: 'My Profile', icon: UserCircle },
 ];
@@ -59,17 +61,31 @@ const partnerNavItems = [
 ];
 
 function AdminPortal() {
-  const { currentUser, notifications } = useApp();
+  const { currentUser, notifications, hasPermission } = useApp();
   const [page, setPage] = usePersistentState<string>('zubkas_admin_page', 'dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const unreadCount = notifications.filter(n => (n.userId === 'admin' || n.userId === 'broadcast') && !n.read).length;
-  const items = adminNavItems.map(item =>
+
+  const allItems = adminNavItems.map(item =>
     item.key === 'announcements' ? { ...item, badge: unreadCount } : item
   );
 
+  const items = allItems.filter(item =>
+    item.key === 'profile' || hasPermission(item.key as import('@/types').AdminSectionKey)
+  );
+
+  const firstAccessibleKey = items[0]?.key ?? 'dashboard';
+  const activePage = items.some(item => item.key === page) ? page : firstAccessibleKey;
+
+  useEffect(() => {
+    if (!items.some(item => item.key === page) && page !== firstAccessibleKey) {
+      setPage(firstAccessibleKey);
+    }
+  }, [items, page, firstAccessibleKey, setPage]);
+
   const renderPage = () => {
-    switch (page) {
+    switch (activePage) {
       case 'dashboard': return <AdminDashboard />;
       case 'partners': return <AdminPartners />;
       case 'leads': return <AdminLeads />;
@@ -81,6 +97,7 @@ function AdminPortal() {
       case 'leaderboard': return <AdminLeaderboard />;
       case 'settings': return <AdminSettings />;
       case 'content': return <AdminContentManager />;
+      case 'roles': return <AdminRoles />;
       case 'profile': return <AdminProfile />;
       default: return <AdminDashboard />;
     }
@@ -89,7 +106,7 @@ function AdminPortal() {
   return (
     <AppLayout
       sidebarItems={items}
-      activePage={page}
+      activePage={activePage}
       onNavigate={setPage}
       userName={currentUser?.name ?? ''}
       userRole={currentUser?.role === 'admin' ? 'Administrator' : currentUser?.employeeRole ?? 'Employee'}

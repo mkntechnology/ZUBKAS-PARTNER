@@ -1,5 +1,18 @@
 export type UserRole = 'admin' | 'employee' | 'partner';
 
+export type AdminSectionKey =
+  | 'dashboard' | 'partners' | 'leads' | 'employees' | 'categories'
+  | 'plans' | 'products' | 'content' | 'announcements' | 'leaderboard'
+  | 'settings' | 'roles';
+
+export interface Role {
+  id: string;
+  name: string;
+  description: string;
+  permissions: AdminSectionKey[];
+  isDefault?: boolean;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -84,6 +97,7 @@ export interface Employee {
   name: string;
   email: string;
   role: string;
+  roleId: string;
   status: 'Active' | 'Inactive';
   joinedDate: string;
 }

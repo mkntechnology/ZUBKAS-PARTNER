@@ -2,7 +2,7 @@ import { createContext, useContext, useCallback, type ReactNode } from 'react';
 import type {
   User, Partner, Customer, Lead, Employee, Category,
   Announcement, Notification, Plan, AppSettings, Product, SiteContent,
-  CommissionTransaction,
+  CommissionTransaction, Role, AdminSectionKey,
 } from '@/types';
 import * as mock from '@/data/mockData';
 import { usePersistentState } from '@/utils/usePersistentState';
@@ -38,6 +38,14 @@ interface AppContextValue {
   settings: AppSettings;
   siteContent: SiteContent;
   transactions: CommissionTransaction[];
+  roles: Role[];
+
+  hasPermission: (section: AdminSectionKey) => boolean;
+  getEmployeePermissions: (roleId: string) => AdminSectionKey[];
+  addRole: (r: Omit<Role, 'id'>) => void;
+  updateRole: (id: string, updates: Partial<Omit<Role, 'id'>>) => void;
+  deleteRole: (id: string) => void;
+  assignEmployeeRole: (employeeId: string, roleId: string) => void;
 
   addPartner: (p: Omit<Partner, 'id' | 'totalCommission' | 'monthlyCommission' | 'pendingCommission' | 'activeCustomers' | 'monthlySales'>) => void;
   deletePartner: (id: string) => void;
@@ -81,6 +89,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [siteContent, setSiteContent] = usePersistentState<SiteContent>('zubkas_siteContent', mock.defaultSiteContent);
   const [transactions, setTransactions] = usePersistentState<CommissionTransaction[]>('zubkas_transactions', mock.commissionTransactions);
   const [userPasswords, setUserPasswords] = usePersistentState<Record<string, string>>('zubkas_userPasswords', {});
+  const [roles, setRoles] = usePersistentState<Role[]>('zubkas_roles', mock.defaultRoles);
 
   const login = useCallback((email: string, _password: string) => {
     const user = mock.users.find(u => u.email.toLowerCase() === email.toLowerCase());
@@ -126,6 +135,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addEmployee: AppContextValue['addEmployee'] = useCallback((e) => {
     setEmployees(prev => [...prev, { ...e, id: `emp-${Date.now()}` }]);
   }, [setEmployees]);
+
+  const assignEmployeeRole = useCallback((employeeId: string, roleId: string) => {
+    const role = roles.find(r => r.id === roleId);
+    setEmployees(prev => prev.map(e =>
+      e.id === employeeId ? { ...e, roleId, role: role?.name ?? e.role } : e
+    ));
+  }, [roles, setEmployees]);
+
+  const addRole = useCallback((r: Omit<Role, 'id'>) => {
+    setRoles(prev => [...prev, { ...r, id: `role-${Date.now()}` }]);
+  }, [setRoles]);
+
+  const updateRole = useCallback((id: string, updates: Partial<Omit<Role, 'id'>>) => {
+    setRoles(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
+  }, [setRoles]);
+
+  const deleteRole = useCallback((id: string) => {
+    setRoles(prev => prev.filter(r => r.id !== id));
+  }, [setRoles]);
+
+  const getEmployeePermissions = useCallback((roleId: string): AdminSectionKey[] => {
+    return roles.find(r => r.id === roleId)?.permissions ?? [];
+  }, [roles]);
+
+  const hasPermission = useCallback((section: AdminSectionKey): boolean => {
+    if (!currentUser) return false;
+    if (currentUser.role === 'admin') return true;
+    if (currentUser.role !== 'employee') return false;
+    const employee = employees.find(e => e.email === currentUser.email);
+    if (!employee) return false;
+    return getEmployeePermissions(employee.roleId).includes(section);
+  }, [currentUser, employees, getEmployeePermissions]);
 
   const deleteEmployee: AppContextValue['deleteEmployee'] = useCallback((id) => {
     setEmployees(prev => prev.filter(e => e.id !== id));
@@ -249,7 +290,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSiteContent(mock.defaultSiteContent);
     setTransactions(mock.commissionTransactions);
     setUserPasswords({});
-  }, [setPartners, setCustomers, setLeads, setEmployees, setCategories, setAnnouncements, setNotifications, setPlans, setProducts, setSettings, setSiteContent, setTransactions, setUserPasswords]);
+    setRoles(mock.defaultRoles);
+  }, [setPartners, setCustomers, setLeads, setEmployees, setCategories, setAnnouncements, setNotifications, setPlans, setProducts, setSettings, setSiteContent, setTransactions, setUserPasswords, setRoles]);
 
   const updateUserProfile = useCallback((updates: ProfileUpdate) => {
     setCurrentUser(prev => {
@@ -283,7 +325,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return (
     <AppContext.Provider value={{
       currentUser, login, loginOtp, logout,
-      partners, customers, leads, employees, categories, announcements, notifications, plans, products, settings, siteContent, transactions,
+      partners, customers, leads, employees, categories, announcements, notifications, plans, products, settings, siteContent, transactions, roles,
+      hasPermission, getEmployeePermissions, addRole, updateRole, deleteRole, assignEmployeeRole,
       addPartner, deletePartner, addEmployee, deleteEmployee, addCategory, deleteCategory, addPlan, deletePlan, addProduct, deleteProduct, addAnnouncement, deleteAnnouncement, addLead, deleteLead,
       markNotificationRead, markAllRead, updateSettings, updateSiteContent, resetSiteContent,
       clearDemoData, resetAllData, updateUserProfile, updateUserPassword,

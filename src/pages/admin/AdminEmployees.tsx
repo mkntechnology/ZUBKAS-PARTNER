@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UserPlus, Shield, Search, Trash2, TriangleAlert as AlertTriangle } from 'lucide-react';
+import { UserPlus, Shield, Search, Trash2, TriangleAlert as AlertTriangle, ChevronDown, Check } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader, EmptyState } from '@/components/Shared';
 import { Modal } from '@/components/Modal';
@@ -7,11 +7,12 @@ import { formatDate, getInitials } from '@/utils/helpers';
 import type { Employee } from '@/types';
 
 export function AdminEmployees() {
-  const { employees, addEmployee, deleteEmployee } = useApp();
+  const { employees, roles, addEmployee, deleteEmployee, assignEmployeeRole } = useApp();
   const [showAdd, setShowAdd] = useState(false);
   const [search, setSearch] = useState('');
-  const [form, setForm] = useState({ name: '', email: '', role: 'Partner Manager' });
+  const [form, setForm] = useState({ name: '', email: '', roleId: roles[0]?.id ?? '' });
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
+  const [roleMenuFor, setRoleMenuFor] = useState<string | null>(null);
 
   const filtered = employees.filter(e =>
     e.name.toLowerCase().includes(search.toLowerCase()) || e.email.toLowerCase().includes(search.toLowerCase())
@@ -19,8 +20,9 @@ export function AdminEmployees() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    addEmployee({ name: form.name, email: form.email, role: form.role, status: 'Active', joinedDate: new Date().toISOString().split('T')[0] });
-    setForm({ name: '', email: '', role: 'Partner Manager' });
+    const role = roles.find(r => r.id === form.roleId);
+    addEmployee({ name: form.name, email: form.email, role: role?.name ?? 'Employee', roleId: form.roleId, status: 'Active', joinedDate: new Date().toISOString().split('T')[0] });
+    setForm({ name: '', email: '', roleId: roles[0]?.id ?? '' });
     setShowAdd(false);
   };
 
@@ -52,8 +54,11 @@ export function AdminEmployees() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Shield className="h-5 w-5 text-zubkas-700" />
-                  <button onClick={() => setDeleteTarget(e)} className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors" title="Delete employee">
+                  <button
+                    onClick={() => setDeleteTarget(e)}
+                    className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                    title="Delete employee"
+                  >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
@@ -61,7 +66,40 @@ export function AdminEmployees() {
               <div className="mt-4 space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-500">Role</span>
-                  <span className="font-medium text-gray-900">{e.role}</span>
+                  <div className="relative">
+                    <button
+                      onClick={() => setRoleMenuFor(roleMenuFor === e.id ? null : e.id)}
+                      className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-700 transition-all hover:border-zubkas-300 hover:bg-zubkas-50"
+                    >
+                      <Shield className="h-3 w-3 text-zubkas-700" />
+                      {roles.find(r => r.id === e.roleId)?.name ?? e.role}
+                      <ChevronDown className="h-3 w-3 text-gray-400" />
+                    </button>
+                    {roleMenuFor === e.id && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setRoleMenuFor(null)} />
+                        <div className="absolute right-0 z-50 mt-1 w-56 rounded-xl border border-gray-100 bg-white shadow-xl animate-slide-up py-1 max-h-64 overflow-y-auto">
+                          {roles.map(r => (
+                            <button
+                              key={r.id}
+                              onClick={() => { assignEmployeeRole(e.id, r.id); setRoleMenuFor(null); }}
+                              className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                            >
+                              <div className="min-w-0">
+                                <p className="font-medium truncate">{r.name}</p>
+                                <p className="text-[10px] text-gray-400 truncate">{r.permissions.length} sections</p>
+                              </div>
+                              {e.roleId === r.id && <Check className="h-4 w-4 text-zubkas-700 shrink-0" />}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">Sections</span>
+                  <span className="font-medium text-gray-900">{roles.find(r => r.id === e.roleId)?.permissions.length ?? 0} enabled</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-500">Joined</span>
@@ -89,13 +127,10 @@ export function AdminEmployees() {
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700">Role / Access Level</label>
-            <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="input-field mt-1">
-              <option>Partner Manager</option>
-              <option>Support Lead</option>
-              <option>Onboarding Specialist</option>
-              <option>Account Manager</option>
-              <option>Full Admin Access</option>
+            <select value={form.roleId} onChange={(e) => setForm({ ...form, roleId: e.target.value })} className="input-field mt-1">
+              {roles.map(r => <option key={r.id} value={r.id}>{r.name} — {r.permissions.length} sections</option>)}
             </select>
+            <p className="text-xs text-gray-400 mt-1">You can change this later from the employee card.</p>
           </div>
           <button type="submit" className="btn-primary w-full">Add Employee</button>
         </form>
