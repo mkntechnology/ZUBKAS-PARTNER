@@ -3,6 +3,7 @@ import type {
   User, Partner, Customer, Lead, Employee, Category,
   Announcement, Notification, Plan, AppSettings, Product, SiteContent,
   CommissionTransaction, Role, AdminSectionKey,
+  ChatThread, ChatMessage,
 } from '@/types';
 import * as mock from '@/data/mockData';
 import { usePersistentState } from '@/utils/usePersistentState';
@@ -70,6 +71,16 @@ interface AppContextValue {
   resetAllData: () => void;
   updateUserProfile: (updates: ProfileUpdate) => void;
   updateUserPassword: (updates: PasswordUpdate) => { success: boolean; error?: string };
+
+  chatThreads: ChatThread[];
+  chatMessages: ChatMessage[];
+  startChatThread: (subject: string) => string;
+  sendChatMessage: (threadId: string, text: string, fromSupport?: boolean) => void;
+  markThreadReadByPartner: (threadId: string) => void;
+  markThreadReadBySupport: (threadId: string) => void;
+  closeChatThread: (threadId: string) => void;
+  reopenChatThread: (threadId: string) => void;
+  totalUnreadChatBySupport: number;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -90,6 +101,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [transactions, setTransactions] = usePersistentState<CommissionTransaction[]>('zubkas_transactions', mock.commissionTransactions);
   const [userPasswords, setUserPasswords] = usePersistentState<Record<string, string>>('zubkas_userPasswords', {});
   const [roles, setRoles] = usePersistentState<Role[]>('zubkas_roles', mock.defaultRoles);
+  const [chatThreads, setChatThreads] = usePersistentState<ChatThread[]>('zubkas_chatThreads', []);
+  const [chatMessages, setChatMessages] = usePersistentState<ChatMessage[]>('zubkas_chatMessages', []);
 
   const login = useCallback((email: string, _password: string) => {
     const user = mock.users.find(u => u.email.toLowerCase() === email.toLowerCase());
@@ -291,7 +304,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setTransactions(mock.commissionTransactions);
     setUserPasswords({});
     setRoles(mock.defaultRoles);
-  }, [setPartners, setCustomers, setLeads, setEmployees, setCategories, setAnnouncements, setNotifications, setPlans, setProducts, setSettings, setSiteContent, setTransactions, setUserPasswords, setRoles]);
+    setChatThreads([]);
+    setChatMessages([]);
+  }, [setPartners, setCustomers, setLeads, setEmployees, setCategories, setAnnouncements, setNotifications, setPlans, setProducts, setSettings, setSiteContent, setTransactions, setUserPasswords, setRoles, setChatThreads, setChatMessages]);
 
   const updateUserProfile = useCallback((updates: ProfileUpdate) => {
     setCurrentUser(prev => {
@@ -322,6 +337,72 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return { success: true };
   }, [currentUser, userPasswords, setUserPasswords]);
 
+  const startChatThread = useCallback((subject: string): string => {
+    if (!currentUser || !currentUser.partnerId) return '';
+    const threadId = `chat-${Date.now()}`;
+    const now = new Date().toISOString();
+    const partner = partners.find(p => p.id === currentUser.partnerId);
+    const newThread: ChatThread = {
+      id: threadId,
+      partnerId: currentUser.partnerId,
+      partnerName: currentUser.name,
+      partnerCompany: partner?.company ?? '',
+      subject,
+      status: 'open',
+      createdAt: now,
+      lastMessageAt: now,
+      unreadByPartner: 0,
+      unreadBySupport: 0,
+    };
+    setChatThreads(prev => [newThread, ...prev]);
+    return threadId;
+  }, [currentUser, partners, setChatThreads]);
+
+  const sendChatMessage = useCallback((threadId: string, text: string, fromSupport = false) => {
+    if (!currentUser) return;
+    const now = new Date().toISOString();
+    const msg: ChatMessage = {
+      id: `msg-${Date.now()}`,
+      threadId,
+      senderType: fromSupport ? 'support' : 'partner',
+      senderName: fromSupport ? currentUser.name : currentUser.name,
+      text,
+      timestamp: now,
+      read: false,
+    };
+    setChatMessages(prev => [...prev, msg]);
+    setChatThreads(prev => prev.map(t =>
+      t.id === threadId
+        ? {
+            ...t,
+            lastMessageAt: now,
+            unreadByPartner: fromSupport ? t.unreadByPartner + 1 : t.unreadByPartner,
+            unreadBySupport: !fromSupport ? t.unreadBySupport + 1 : t.unreadBySupport,
+          }
+        : t
+    ));
+  }, [currentUser, setChatMessages, setChatThreads]);
+
+  const markThreadReadByPartner = useCallback((threadId: string) => {
+    setChatThreads(prev => prev.map(t => t.id === threadId ? { ...t, unreadByPartner: 0 } : t));
+    setChatMessages(prev => prev.map(m => m.threadId === threadId && m.senderType === 'support' ? { ...m, read: true } : m));
+  }, [setChatThreads, setChatMessages]);
+
+  const markThreadReadBySupport = useCallback((threadId: string) => {
+    setChatThreads(prev => prev.map(t => t.id === threadId ? { ...t, unreadBySupport: 0 } : t));
+    setChatMessages(prev => prev.map(m => m.threadId === threadId && m.senderType === 'partner' ? { ...m, read: true } : m));
+  }, [setChatThreads, setChatMessages]);
+
+  const closeChatThread = useCallback((threadId: string) => {
+    setChatThreads(prev => prev.map(t => t.id === threadId ? { ...t, status: 'closed' } : t));
+  }, [setChatThreads]);
+
+  const reopenChatThread = useCallback((threadId: string) => {
+    setChatThreads(prev => prev.map(t => t.id === threadId ? { ...t, status: 'open' } : t));
+  }, [setChatThreads]);
+
+  const totalUnreadChatBySupport = chatThreads.reduce((s, t) => s + t.unreadBySupport, 0);
+
   return (
     <AppContext.Provider value={{
       currentUser, login, loginOtp, logout,
@@ -330,6 +411,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addPartner, deletePartner, addEmployee, deleteEmployee, addCategory, deleteCategory, addPlan, deletePlan, addProduct, deleteProduct, addAnnouncement, deleteAnnouncement, addLead, deleteLead,
       markNotificationRead, markAllRead, updateSettings, updateSiteContent, resetSiteContent,
       clearDemoData, resetAllData, updateUserProfile, updateUserPassword,
+      chatThreads, chatMessages, startChatThread, sendChatMessage, markThreadReadByPartner, markThreadReadBySupport, closeChatThread, reopenChatThread, totalUnreadChatBySupport,
     }}>
       {children}
     </AppContext.Provider>

@@ -3,7 +3,7 @@ export type UserRole = 'admin' | 'employee' | 'partner';
 export type AdminSectionKey =
   | 'dashboard' | 'partners' | 'leads' | 'employees' | 'categories'
   | 'plans' | 'products' | 'content' | 'announcements' | 'leaderboard'
-  | 'settings' | 'roles';
+  | 'settings' | 'roles' | 'support';
 
 export interface Role {
   id: string;
@@ -214,4 +214,27 @@ export interface SiteContent {
   loginPartnerSubtitle: string;
   loginAdminTitle: string;
   loginAdminSubtitle: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  threadId: string;
+  senderType: 'partner' | 'support';
+  senderName: string;
+  text: string;
+  timestamp: string;
+  read: boolean;
+}
+
+export interface ChatThread {
+  id: string;
+  partnerId: string;
+  partnerName: string;
+  partnerCompany: string;
+  subject: string;
+  status: 'open' | 'closed';
+  createdAt: string;
+  lastMessageAt: string;
+  unreadByPartner: number;
+  unreadBySupport: number;
 }
