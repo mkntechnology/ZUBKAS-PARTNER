@@ -64,6 +64,7 @@ interface AppContextValue {
   updateLeadStatus: (id: string, status: Lead['status']) => void;
   approveLead: (id: string, details: { productId?: string; productName?: string; planType: Lead['planType']; planPrice: number; commissionRate: number }) => void;
   addLead: (l: Omit<Lead, 'id' | 'submittedDate' | 'lockEndDate' | 'status' | 'partnerName'>) => boolean;
+  adminAddLead: (l: { partnerId: string; companyName: string; contactName: string; email: string; phone: string; whatsapp: string; productId?: string; productName?: string; planType: PlanType; notes: string }) => void;
   addCustomer: (c: Omit<Customer, 'id' | 'commissionEarned' | 'commissionEndDate' | 'monthsElapsed' | 'remainingMonths'>) => void;
   markNotificationRead: (id: string) => void;
   markAllRead: () => void;
@@ -249,6 +250,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }]);
     }
   }, [leads, settings.leadLockDays, setLeads, setNotifications]);
+
+  const adminAddLead: AppContextValue['adminAddLead'] = useCallback((l) => {
+    const partner = l.partnerId === 'none' ? null : partners.find(p => p.id === l.partnerId);
+    const newLead: Lead = {
+      id: `l-${Date.now()}`,
+      partnerId: l.partnerId,
+      partnerName: partner?.name ?? 'Admin (Direct)',
+      companyName: l.companyName,
+      contactName: l.contactName,
+      email: l.email,
+      phone: l.phone,
+      whatsapp: l.whatsapp,
+      status: 'Open',
+      submittedDate: '2026-10-08',
+      lockEndDate: '2026-10-08',
+      notes: l.notes,
+      productId: l.productId,
+      productName: l.productName,
+      planType: l.planType,
+    };
+    setLeads(prev => [...prev, newLead]);
+    if (partner) {
+      setNotifications(prev => [...prev, {
+        id: `n-${Date.now()}`,
+        userId: partner.id,
+        title: 'New Lead Assigned',
+        message: `A new lead for "${l.companyName}" has been created by admin and assigned to you.`,
+        type: 'lead',
+        date: '2026-10-08',
+        read: false,
+      }]);
+    }
+  }, [partners, setLeads, setNotifications]);
 
   const addCustomer: AppContextValue['addCustomer'] = useCallback((c) => {
     const start = new Date(c.startDate);
@@ -462,7 +496,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       currentUser, login, loginOtp, logout,
       partners, customers, leads, employees, categories, announcements, notifications, plans, products, settings, siteContent, transactions, roles,
       hasPermission, getEmployeePermissions, addRole, updateRole, deleteRole, assignEmployeeRole,
-      addPartner, deletePartner, addEmployee, deleteEmployee, addCategory, deleteCategory, addPlan, deletePlan, addProduct, deleteProduct, addAnnouncement, deleteAnnouncement, addLead, deleteLead, updateLeadStatus, approveLead, addCustomer,
+      addPartner, deletePartner, addEmployee, deleteEmployee, addCategory, deleteCategory, addPlan, deletePlan, addProduct, deleteProduct, addAnnouncement, deleteAnnouncement, addLead, adminAddLead, deleteLead, updateLeadStatus, approveLead, addCustomer,
       markNotificationRead, markAllRead, updateSettings, updateSiteContent, resetSiteContent,
       clearDemoData, resetAllData, updateUserProfile, updateUserPassword,
       chatThreads, chatMessages, startChatThread, sendChatMessage, markThreadReadByPartner, markThreadReadBySupport, closeChatThread, reopenChatThread, totalUnreadChatBySupport,

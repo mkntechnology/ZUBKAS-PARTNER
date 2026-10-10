@@ -73,6 +73,7 @@ export interface Lead {
   submittedDate: string;
   lockEndDate: string;
   notes: string;
+  whatsapp?: string;
   productId?: string;
   productName?: string;
   planType?: PlanType;

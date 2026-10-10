@@ -1,9 +1,5 @@
 import { useState } from 'react';
-import {
-  Search, Lock, CheckCircle2, XCircle, Clock, Trash2,
-  TriangleAlert as AlertTriangle, Check, X, Hourglass,
-  Package, DollarSign, Percent,
-} from 'lucide-react';
+import { Search, Lock, CircleCheck as CheckCircle2, Circle as XCircle, Clock, Trash2, TriangleAlert as AlertTriangle, Check, X, Hourglass, Package, DollarSign, Percent, Plus, Layers, Building2, Mail, Phone, MessageCircle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader, EmptyState } from '@/components/Shared';
 import { Modal } from '@/components/Modal';
@@ -28,14 +24,42 @@ interface ApprovalForm {
   commissionRate: string;
 }
 
+interface CreateLeadForm {
+  partnerId: string;
+  companyName: string;
+  contactName: string;
+  email: string;
+  phone: string;
+  whatsapp: string;
+  productId: string;
+  planType: PlanType;
+  notes: string;
+}
+
+const emptyCreateForm: CreateLeadForm = {
+  partnerId: 'none',
+  companyName: '',
+  contactName: '',
+  email: '',
+  phone: '',
+  whatsapp: '',
+  productId: '',
+  planType: 'Monthly',
+  notes: '',
+};
+
 export function AdminLeads() {
-  const { leads, products, settings, deleteLead, updateLeadStatus, approveLead } = useApp();
+  const { leads, products, partners, settings, deleteLead, updateLeadStatus, approveLead, adminAddLead } = useApp();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null);
   const [approveTarget, setApproveTarget] = useState<Lead | null>(null);
   const [pendingTarget, setPendingTarget] = useState<Lead | null>(null);
   const [rejectTarget, setRejectTarget] = useState<Lead | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [createForm, setCreateForm] = useState<CreateLeadForm>(emptyCreateForm);
+  const [createErrors, setCreateErrors] = useState<Partial<Record<keyof CreateLeadForm, string>>>({});
+  const [createSuccess, setCreateSuccess] = useState('');
   const [approvalForm, setApprovalForm] = useState<ApprovalForm>({
     productId: '',
     planType: 'Monthly',
@@ -87,6 +111,39 @@ export function AdminLeads() {
     setApproveTarget(null);
   };
 
+  const validateCreate = (): boolean => {
+    const errs: Partial<Record<keyof CreateLeadForm, string>> = {};
+    if (!createForm.companyName.trim()) errs.companyName = 'Required';
+    if (!createForm.contactName.trim()) errs.contactName = 'Required';
+    if (!createForm.email.trim()) errs.email = 'Required';
+    if (!createForm.phone.trim()) errs.phone = 'Required';
+    if (!createForm.whatsapp.trim()) errs.whatsapp = 'Required';
+    setCreateErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleCreateSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateCreate()) return;
+    const selectedProduct = createForm.productId ? products.find(p => p.id === createForm.productId) : undefined;
+    adminAddLead({
+      partnerId: createForm.partnerId,
+      companyName: createForm.companyName,
+      contactName: createForm.contactName,
+      email: createForm.email,
+      phone: createForm.phone,
+      whatsapp: createForm.whatsapp,
+      productId: createForm.productId || undefined,
+      productName: selectedProduct?.name,
+      planType: createForm.planType,
+      notes: createForm.notes,
+    });
+    setCreateSuccess(`Lead for "${createForm.companyName}" created successfully!`);
+    setCreateForm(emptyCreateForm);
+    setCreateErrors({});
+    setTimeout(() => { setShowCreate(false); setCreateSuccess(''); }, 2000);
+  };
+
   const selectedProduct = products.find(p => p.id === approvalForm.productId);
   const estimatedCommission =
     approvalForm.planPrice && approvalForm.commissionRate
@@ -98,6 +155,7 @@ export function AdminLeads() {
       <SectionHeader
         title="All Leads"
         subtitle={`${leads.length} leads across all partners${pendingCount > 0 ? ` · ${pendingCount} pending approval` : ''}`}
+        action={<button onClick={() => { setCreateForm(emptyCreateForm); setCreateErrors({}); setCreateSuccess(''); setShowCreate(true); }} className="btn-primary"><Plus className="h-4 w-4" /> Create Lead</button>}
       />
 
       {/* Stats */}
@@ -504,6 +562,179 @@ export function AdminLeads() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* ── Create Lead Modal ─────────────────────────────────────────── */}
+      <Modal
+        open={showCreate}
+        onClose={() => { setShowCreate(false); setCreateErrors({}); setCreateSuccess(''); }}
+        title="Create Lead"
+        size="lg"
+      >
+        <form onSubmit={handleCreateSubmit} className="space-y-4">
+          {createSuccess && (
+            <div className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-600 flex items-center gap-2 animate-fade-in">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              {createSuccess}
+            </div>
+          )}
+
+          {/* Partner Selection */}
+          <div>
+            <label className="text-sm font-medium text-gray-700">Assign to Partner</label>
+            <select
+              value={createForm.partnerId}
+              onChange={(e) => setCreateForm({ ...createForm, partnerId: e.target.value })}
+              className="input-field mt-1"
+            >
+              <option value="none">None (Direct Admin Lead)</option>
+              {partners.map(p => (
+                <option key={p.id} value={p.id}>{p.name} — {p.company}</option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-400 mt-1">Select a partner to assign this lead to, or leave as "None" for a direct admin lead.</p>
+          </div>
+
+          <div className="border-t border-gray-100 pt-4 space-y-4">
+            {/* Company Name */}
+            <div>
+              <label className="text-sm font-medium text-gray-700">Company Name <span className="text-red-500">*</span></label>
+              <div className="relative mt-1">
+                <Building2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  required
+                  value={createForm.companyName}
+                  onChange={(e) => setCreateForm({ ...createForm, companyName: e.target.value })}
+                  className={`input-field pl-9 ${createErrors.companyName ? 'border-red-400' : ''}`}
+                  placeholder="Company name"
+                />
+              </div>
+              {createErrors.companyName && <p className="text-xs text-red-500 mt-1">{createErrors.companyName}</p>}
+            </div>
+
+            {/* Contact Person */}
+            <div>
+              <label className="text-sm font-medium text-gray-700">Contact Person <span className="text-red-500">*</span></label>
+              <input
+                required
+                value={createForm.contactName}
+                onChange={(e) => setCreateForm({ ...createForm, contactName: e.target.value })}
+                className={`input-field mt-1 ${createErrors.contactName ? 'border-red-400' : ''}`}
+                placeholder="Contact name at the company"
+              />
+              {createErrors.contactName && <p className="text-xs text-red-500 mt-1">{createErrors.contactName}</p>}
+            </div>
+
+            {/* Email & Phone */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="text-sm font-medium text-gray-700">Email <span className="text-red-500">*</span></label>
+                <div className="relative mt-1">
+                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <input
+                    required
+                    type="email"
+                    value={createForm.email}
+                    onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+                    className={`input-field pl-9 ${createErrors.email ? 'border-red-400' : ''}`}
+                    placeholder="contact@company.com"
+                  />
+                </div>
+                {createErrors.email && <p className="text-xs text-red-500 mt-1">{createErrors.email}</p>}
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Phone <span className="text-red-500">*</span></label>
+                <div className="relative mt-1">
+                  <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <input
+                    required
+                    value={createForm.phone}
+                    onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
+                    className={`input-field pl-9 ${createErrors.phone ? 'border-red-400' : ''}`}
+                    placeholder="+91 ..."
+                  />
+                </div>
+                {createErrors.phone && <p className="text-xs text-red-500 mt-1">{createErrors.phone}</p>}
+              </div>
+            </div>
+
+            {/* WhatsApp */}
+            <div>
+              <label className="text-sm font-medium text-gray-700">WhatsApp Number <span className="text-red-500">*</span></label>
+              <div className="relative mt-1">
+                <MessageCircle className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  required
+                  value={createForm.whatsapp}
+                  onChange={(e) => setCreateForm({ ...createForm, whatsapp: e.target.value })}
+                  className={`input-field pl-9 ${createErrors.whatsapp ? 'border-red-400' : ''}`}
+                  placeholder="+91 ..."
+                />
+              </div>
+              {createErrors.whatsapp && <p className="text-xs text-red-500 mt-1">{createErrors.whatsapp}</p>}
+            </div>
+          </div>
+
+          {/* Product & Plan Type */}
+          <div className="border-t border-gray-100 pt-4 space-y-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700">Product Interest</label>
+              <select
+                value={createForm.productId}
+                onChange={(e) => setCreateForm({ ...createForm, productId: e.target.value })}
+                className="input-field mt-1"
+              >
+                <option value="">— Select a product (optional) —</option>
+                {products.filter(p => p.status !== 'Coming Soon').map(p => (
+                  <option key={p.id} value={p.id}>{p.name} — {p.price}</option>
+                ))}
+              </select>
+              {createForm.productId && (() => {
+                const p = products.find(prod => prod.id === createForm.productId);
+                return p ? (
+                  <div className="mt-2 rounded-lg bg-zubkas-50 p-3 text-xs text-zubkas-700">
+                    <span className="font-semibold">{p.name}</span>: {p.commissionEligible ? p.commissionRate : 'Not commission eligible'} · {p.price}
+                  </div>
+                ) : null;
+              })()}
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Plan Type <span className="text-red-500">*</span></label>
+              <div className="mt-1 flex gap-3">
+                {(['Monthly', 'Yearly'] as const).map(pt => (
+                  <button
+                    key={pt}
+                    type="button"
+                    onClick={() => setCreateForm({ ...createForm, planType: pt })}
+                    className={`flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all ${createForm.planType === pt ? 'border-zubkas-700 bg-zubkas-50 text-zubkas-700' : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50'}`}
+                  >
+                    <Layers className="h-4 w-4" />
+                    {pt}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label className="text-sm font-medium text-gray-700">Notes</label>
+            <textarea
+              value={createForm.notes}
+              onChange={(e) => setCreateForm({ ...createForm, notes: e.target.value })}
+              className="input-field mt-1 min-h-20"
+              placeholder="Any details about the lead..."
+            />
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={() => { setShowCreate(false); setCreateErrors({}); setCreateSuccess(''); }} className="btn-ghost flex-1">Cancel</button>
+            <button type="submit" className="btn-primary flex-1">
+              <Plus className="h-4 w-4" />
+              Create Lead
+            </button>
+          </div>
+        </form>
       </Modal>
     </div>
   );
