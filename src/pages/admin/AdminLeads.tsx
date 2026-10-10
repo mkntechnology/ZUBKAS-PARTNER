@@ -9,13 +9,14 @@ import type { Lead, PlanType, LeadPaymentStatus } from '@/types';
 const statusConfig: Record<Lead['status'], { icon: typeof Lock; badge: string; text: string }> = {
   'Pending Approval': { icon: Hourglass, badge: 'badge-neutral', text: 'text-blue-700' },
   Locked:            { icon: Lock,        badge: 'badge-warning', text: 'text-amber-700' },
+  Approved:          { icon: CheckCircle2, badge: 'badge-success', text: 'text-emerald-700' },
   Open:              { icon: Clock,       badge: 'badge-neutral', text: 'text-gray-600'  },
   Converted:         { icon: CheckCircle2, badge: 'badge-success', text: 'text-emerald-700' },
   Lost:              { icon: XCircle,     badge: 'badge-error',   text: 'text-red-700'   },
   Rejected:          { icon: XCircle,     badge: 'badge-error',   text: 'text-red-700'   },
 };
 
-const statusOrder: Lead['status'][] = ['Pending Approval', 'Locked', 'Open', 'Converted', 'Lost', 'Rejected'];
+const statusOrder: Lead['status'][] = ['Pending Approval', 'Locked', 'Approved', 'Open', 'Converted', 'Lost', 'Rejected'];
 
 interface ApprovalForm {
   productId: string;
@@ -260,6 +261,7 @@ export function AdminLeads() {
           <option>All</option>
           <option>Pending Approval</option>
           <option>Locked</option>
+          <option>Approved</option>
           <option>Open</option>
           <option>Converted</option>
           <option>Lost</option>
@@ -309,7 +311,7 @@ export function AdminLeads() {
                       <td className="px-4 py-3 text-gray-600">{l.partnerName}</td>
                       <td className="px-4 py-3 text-gray-500 text-xs">{formatDate(l.submittedDate)}</td>
                       <td className="px-4 py-3 text-xs">
-                        {l.status === 'Locked' && lockDaysLeft > 0 ? (
+                        {(l.status === 'Locked' || l.status === 'Approved') && lockDaysLeft > 0 ? (
                           <span className="text-amber-600 font-medium">{lockDaysLeft}d left</span>
                         ) : (
                           <span className="text-gray-400">{formatDate(l.lockEndDate)}</span>
@@ -348,7 +350,7 @@ export function AdminLeads() {
                         <div className="flex items-center justify-center gap-1.5 flex-wrap">
                           <button
                             onClick={() => openApprove(l)}
-                            disabled={l.status === 'Locked'}
+                            disabled={l.status === 'Locked' || l.status === 'Approved'}
                             className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40"
                             title="Approve lead"
                           >

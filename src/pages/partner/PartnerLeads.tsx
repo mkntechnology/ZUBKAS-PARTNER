@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Lock, CircleCheck as CheckCircle2, Circle as XCircle, Clock, TriangleAlert as AlertTriangle, Search, Package, Layers } from 'lucide-react';
+import { Plus, Lock, CircleCheck as CheckCircle2, Circle as XCircle, Clock, TriangleAlert as AlertTriangle, Search, Package, Layers, Trash2 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader, EmptyState } from '@/components/Shared';
 import { Modal } from '@/components/Modal';
@@ -9,6 +9,7 @@ import type { PlanType } from '@/types';
 const statusConfig = {
   'Pending Approval': { icon: Clock, badge: 'badge-neutral' },
   Locked: { icon: Lock, badge: 'badge-warning' },
+  Approved: { icon: CheckCircle2, badge: 'badge-success' },
   Open: { icon: Clock, badge: 'badge-neutral' },
   Converted: { icon: CheckCircle2, badge: 'badge-success' },
   Lost: { icon: XCircle, badge: 'badge-error' },
@@ -38,12 +39,13 @@ const emptyForm: LeadForm = {
 };
 
 export function PartnerLeads() {
-  const { currentUser, leads, customers, products, settings, addLead } = useApp();
+  const { currentUser, leads, customers, products, settings, addLead, deleteLead } = useApp();
   const [search, setSearch] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [form, setForm] = useState<LeadForm>(emptyForm);
+  const [deleteTarget, setDeleteTarget] = useState<typeof leads[number] | null>(null);
 
   const allMyLeads = leads.filter(l => l.partnerId === currentUser?.partnerId);
   const pendingApprovalCount = allMyLeads.filter(l => l.status === 'Pending Approval').length;
@@ -127,7 +129,7 @@ export function PartnerLeads() {
 
       {/* Stats */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-        {(['Locked', 'Open', 'Converted', 'Lost'] as const).map(s => {
+        {(['Locked', 'Approved', 'Open', 'Converted', 'Lost'] as const).map(s => {
           const cfg = statusConfig[s];
           const Icon = cfg.icon;
           const count = myLeads.filter(l => l.status === s).length;
@@ -165,6 +167,7 @@ export function PartnerLeads() {
                   <th className="px-4 py-3 text-left font-medium text-gray-500">Lock Ends</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500">Status</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500">Notes</th>
+                  <th className="px-4 py-3 text-center font-medium text-gray-500">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -196,7 +199,7 @@ export function PartnerLeads() {
                       </td>
                       <td className="px-4 py-3 text-gray-500 text-xs">{formatDate(l.submittedDate)}</td>
                       <td className="px-4 py-3 text-xs">
-                        {l.status === 'Locked' && lockDaysLeft > 0 ? (
+                        {(l.status === 'Locked' || l.status === 'Approved') && lockDaysLeft > 0 ? (
                           <span className="text-amber-600 font-medium flex items-center gap-1"><Lock className="h-3 w-3" /> {lockDaysLeft} day{lockDaysLeft > 1 ? 's' : ''} left</span>
                         ) : (
                           <span className="text-gray-400">{formatDate(l.lockEndDate)}</span>
@@ -209,6 +212,15 @@ export function PartnerLeads() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-500 text-xs max-w-xs truncate">{l.notes}</td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => setDeleteTarget(l)}
+                          className="inline-flex items-center justify-center rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                          title="Delete lead"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -217,6 +229,33 @@ export function PartnerLeads() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete Lead" size="sm">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 rounded-lg bg-red-50 p-3">
+            <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-red-800">Are you sure?</p>
+              <p className="text-xs text-red-700 mt-1">
+                This will permanently remove the lead for {deleteTarget?.companyName} ({deleteTarget?.contactName}). This action cannot be undone.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-3 justify-end">
+            <button onClick={() => setDeleteTarget(null)} className="btn-secondary">Cancel</button>
+            <button
+              onClick={() => {
+                if (deleteTarget) deleteLead(deleteTarget.id);
+                setDeleteTarget(null);
+              }}
+              className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"
+            >
+              <Trash2 className="h-4 w-4" /> Delete
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal open={showAdd} onClose={() => { setShowAdd(false); setError(''); setSuccess(''); }} title="Submit New Lead" size="lg">
         <form onSubmit={handleSubmit} className="space-y-4">

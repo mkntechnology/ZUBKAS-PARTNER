@@ -68,6 +68,7 @@ interface AppContextValue {
   addLead: (l: Omit<Lead, 'id' | 'submittedDate' | 'lockEndDate' | 'status' | 'partnerName'>) => boolean;
   adminAddLead: (l: { partnerId: string; companyName: string; contactName: string; email: string; phone: string; whatsapp: string; productId?: string; productName?: string; planType: PlanType; notes: string }) => void;
   addCustomer: (c: Omit<Customer, 'id' | 'commissionEarned' | 'commissionEndDate' | 'monthsElapsed' | 'remainingMonths'>) => void;
+  deleteCustomer: (id: string) => void;
   markNotificationRead: (id: string) => void;
   markAllRead: () => void;
   updateSettings: (s: Partial<AppSettings>) => void;
@@ -230,7 +231,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLeads(prev => prev.map(l =>
       l.id !== id ? l : {
         ...l,
-        status: 'Locked',
+        status: 'Approved',
         lockEndDate,
         productId: details.productId,
         productName: details.productName,
@@ -245,7 +246,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         id: `n-${Date.now()}`,
         userId: lead.partnerId,
         title: 'Lead Approved',
-        message: `Your lead "${lead.companyName}" has been approved and is now locked for ${settings.leadLockDays} days.`,
+        message: `Your lead "${lead.companyName}" has been approved and locked for ${settings.leadLockDays} days. Convert it before the lock expires.`,
         type: 'lead',
         date: '2026-10-08',
         read: false,
@@ -257,6 +258,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLeads(prev => prev.map(l =>
       l.id !== id ? l : {
         ...l,
+        status: details.paymentStatus === 'Paid' ? 'Approved' : (l.status === 'Pending Approval' ? 'Locked' : l.status),
         paymentStatus: details.paymentStatus,
         planPrice: details.planPrice,
         commissionRate: details.commissionRate,
@@ -380,6 +382,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setCustomers(prev => [...prev, newCustomer]);
   }, [setCustomers]);
 
+  const deleteCustomer: AppContextValue['deleteCustomer'] = useCallback((id) => {
+    setCustomers(prev => prev.filter(c => c.id !== id));
+  }, [setCustomers]);
+
   const addAnnouncement: AppContextValue['addAnnouncement'] = useCallback((a) => {
     const newAnn: Announcement = {
       ...a,
@@ -406,7 +412,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLeads(prev => {
       const existing = prev.find(
         ld => ld.companyName.toLowerCase() === l.companyName.toLowerCase() &&
-          (ld.status === 'Locked' || ld.status === 'Pending Approval') &&
+          (ld.status === 'Locked' || ld.status === 'Approved' || ld.status === 'Pending Approval') &&
           ld.partnerId !== l.partnerId
       );
       if (existing) {
@@ -573,7 +579,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       currentUser, login, loginOtp, logout,
       partners, customers, leads, employees, categories, announcements, notifications, plans, products, settings, siteContent, transactions, roles,
       hasPermission, getEmployeePermissions, addRole, updateRole, deleteRole, assignEmployeeRole,
-      addPartner, deletePartner, addEmployee, deleteEmployee, addCategory, deleteCategory, addPlan, deletePlan, addProduct, deleteProduct, addAnnouncement, deleteAnnouncement, addLead, adminAddLead, deleteLead, updateLeadStatus, approveLead, updateLeadPayment, convertLead, addCustomer,
+      addPartner, deletePartner, addEmployee, deleteEmployee, addCategory, deleteCategory, addPlan, deletePlan, addProduct, deleteProduct, addAnnouncement, deleteAnnouncement, addLead, adminAddLead, deleteLead, updateLeadStatus, approveLead, updateLeadPayment, convertLead, addCustomer, deleteCustomer,
       markNotificationRead, markAllRead, updateSettings, updateSiteContent, resetSiteContent,
       clearDemoData, resetAllData, updateUserProfile, updateUserPassword,
       chatThreads, chatMessages, startChatThread, sendChatMessage, markThreadReadByPartner, markThreadReadBySupport, closeChatThread, reopenChatThread, totalUnreadChatBySupport,

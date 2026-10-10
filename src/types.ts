@@ -72,7 +72,7 @@ export interface Lead {
   contactName: string;
   email: string;
   phone: string;
-  status: 'Pending Approval' | 'Locked' | 'Open' | 'Converted' | 'Lost' | 'Rejected';
+  status: 'Pending Approval' | 'Locked' | 'Approved' | 'Open' | 'Converted' | 'Lost' | 'Rejected';
   submittedDate: string;
   lockEndDate: string;
   notes: string;

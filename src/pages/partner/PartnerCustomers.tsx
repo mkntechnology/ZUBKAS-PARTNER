@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { Search, MessageCircle, TriangleAlert as AlertTriangle, DollarSign, Clock, Users as Users2, UserPlus, CircleCheck as CheckCircle2, Building2, Mail, Phone } from 'lucide-react';
+import { Search, MessageCircle, TriangleAlert as AlertTriangle, DollarSign, Clock, Users as Users2, UserPlus, CircleCheck as CheckCircle2, Building2, Mail, Phone, Trash2 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader, EmptyState } from '@/components/Shared';
 import { Modal } from '@/components/Modal';
 import { formatCurrency, formatDate } from '@/utils/helpers';
-import type { PlanType, PlanTier } from '@/types';
 
 interface CustomerForm {
   name: string;
@@ -12,10 +11,6 @@ interface CustomerForm {
   phone: string;
   email: string;
   whatsapp: string;
-  planType: PlanType;
-  planTier: PlanTier;
-  commissionRate: string;
-  subscriptionAmount: string;
 }
 
 const emptyForm: CustomerForm = {
@@ -24,20 +19,17 @@ const emptyForm: CustomerForm = {
   phone: '',
   email: '',
   whatsapp: '',
-  planType: 'Monthly',
-  planTier: 'Free',
-  commissionRate: '5',
-  subscriptionAmount: '2000',
 };
 
 export function PartnerCustomers() {
-  const { currentUser, customers, plans, addCustomer } = useApp();
+  const { currentUser, customers, addCustomer, deleteCustomer } = useApp();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [planFilter, setPlanFilter] = useState('All');
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState<CustomerForm>(emptyForm);
   const [success, setSuccess] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<typeof customers[number] | null>(null);
 
   const myCustomers = customers.filter(c => c.partnerId === currentUser?.partnerId);
   const filtered = myCustomers.filter(c =>
@@ -49,30 +41,22 @@ export function PartnerCustomers() {
   const totalEarned = myCustomers.reduce((s, c) => s + c.commissionEarned, 0);
   const blockedCommission = myCustomers.filter(c => c.status === 'Unpaid').reduce((s, c) => s + (c.subscriptionAmount * c.commissionRate / 100), 0);
 
-  const handlePlanTierChange = (tier: PlanTier) => {
-    const plan = plans.find(p => p.name === (tier === 'Free' ? 'Free Plan' : 'Premium Plan'));
-    const rate = plan?.commissionRate ?? (tier === 'Free' ? 5 : 15);
-    setForm(prev => ({ ...prev, planTier: tier, commissionRate: String(rate) }));
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const today = new Date('2026-10-08').toISOString().split('T')[0];
-    const renewalDate = form.planType === 'Yearly'
-      ? new Date(new Date('2026-10-08').setFullYear(new Date('2026-10-08').getFullYear() + 1)).toISOString().split('T')[0]
-      : new Date(new Date('2026-10-08').setMonth(new Date('2026-10-08').getMonth() + 2)).toISOString().split('T')[0];
+    const renewalDate = new Date(new Date('2026-10-08').setMonth(new Date('2026-10-08').getMonth() + 2)).toISOString().split('T')[0];
 
     addCustomer({
       partnerId: currentUser?.partnerId ?? '',
       name: form.name,
-      companyName: form.companyName,
+      companyName: form.companyName || '—',
       phone: form.phone,
       email: form.email,
       whatsapp: form.whatsapp,
-      planType: form.planType,
-      planTier: form.planTier,
-      commissionRate: Number(form.commissionRate),
-      subscriptionAmount: Number(form.subscriptionAmount),
+      planType: 'Monthly',
+      planTier: 'Free',
+      commissionRate: 5,
+      subscriptionAmount: 0,
       startDate: today,
       renewalDate,
       status: 'Active',
@@ -163,6 +147,7 @@ export function PartnerCustomers() {
                   <th className="px-4 py-3 text-right font-medium text-gray-500">Commission %</th>
                   <th className="px-4 py-3 text-right font-medium text-gray-500">Commission Earned</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500">Commission End Date</th>
+                  <th className="px-4 py-3 text-center font-medium text-gray-500">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -200,6 +185,15 @@ export function PartnerCustomers() {
                         <span className="block text-[10px] text-zubkas-700 font-medium">Cap reached</span>
                       )}
                     </td>
+                    <td className="px-4 py-3 text-center">
+                      <button
+                        onClick={() => setDeleteTarget(c)}
+                        className="inline-flex items-center justify-center rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                        title="Delete customer"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -207,6 +201,33 @@ export function PartnerCustomers() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete Customer" size="sm">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 rounded-lg bg-red-50 p-3">
+            <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-red-800">Are you sure?</p>
+              <p className="text-xs text-red-700 mt-1">
+                This will permanently remove {deleteTarget?.name} ({deleteTarget?.companyName}) and all associated commission data. This action cannot be undone.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-3 justify-end">
+            <button onClick={() => setDeleteTarget(null)} className="btn-secondary">Cancel</button>
+            <button
+              onClick={() => {
+                if (deleteTarget) deleteCustomer(deleteTarget.id);
+                setDeleteTarget(null);
+              }}
+              className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"
+            >
+              <Trash2 className="h-4 w-4" /> Delete
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Add Customer Modal */}
       <Modal open={showAdd} onClose={() => { setShowAdd(false); setSuccess(''); }} title="Add New Customer" size="lg">
@@ -224,10 +245,10 @@ export function PartnerCustomers() {
               <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input-field mt-1" placeholder="Full name" />
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Company Name <span className="text-red-500">*</span></label>
+              <label className="text-sm font-medium text-gray-700">Company Name</label>
               <div className="relative mt-1">
                 <Building2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <input required value={form.companyName} onChange={(e) => setForm({ ...form, companyName: e.target.value })} className="input-field pl-9" placeholder="Company Pvt Ltd" />
+                <input value={form.companyName} onChange={(e) => setForm({ ...form, companyName: e.target.value })} className="input-field pl-9" placeholder="Company Pvt Ltd (optional)" />
               </div>
             </div>
           </div>
@@ -255,36 +276,6 @@ export function PartnerCustomers() {
               <MessageCircle className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input required value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} className="input-field pl-9" placeholder="+91 98765 43210" />
             </div>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div>
-              <label className="text-sm font-medium text-gray-700">Plan Tier <span className="text-red-500">*</span></label>
-              <select value={form.planTier} onChange={(e) => handlePlanTierChange(e.target.value as PlanTier)} className="input-field mt-1">
-                <option value="Free">Free</option>
-                <option value="Premium">Premium</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">Plan Type <span className="text-red-500">*</span></label>
-              <select value={form.planType} onChange={(e) => setForm({ ...form, planType: e.target.value as PlanType })} className="input-field mt-1">
-                <option value="Monthly">Monthly</option>
-                <option value="Yearly">Yearly</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">Commission Rate (%)</label>
-              <input value={form.commissionRate} onChange={(e) => setForm({ ...form, commissionRate: e.target.value })} className="input-field mt-1" readOnly />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-gray-700">Subscription Amount (₹) <span className="text-red-500">*</span></label>
-            <input required type="number" min="1" value={form.subscriptionAmount} onChange={(e) => setForm({ ...form, subscriptionAmount: e.target.value })} className="input-field mt-1" placeholder="2000" />
-          </div>
-
-          <div className="rounded-lg bg-zubkas-50 p-3 text-xs text-zubkas-700">
-            Commission rate is automatically set based on the plan tier: Free = 5%, Premium = 15%. The customer will start earning commission from today.
           </div>
 
           <button type="submit" className="btn-primary w-full"><UserPlus className="h-4 w-4" /> Add Customer</button>
