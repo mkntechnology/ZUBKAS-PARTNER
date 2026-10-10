@@ -21,16 +21,6 @@ export function LoginPage({ onBack }: LoginPageProps) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const partnerDemoAccounts = [
-    { email: 'partner@zubkas.com', label: 'Vikram Singh' },
-    { email: 'neha@zubkas.com', label: 'Neha Gupta' },
-  ];
-
-  const adminDemoAccounts = [
-    { email: 'admin@zubkas.com', label: 'Rajesh Kumar' },
-    { email: 'employee@zubkas.com', label: 'Priya Sharma' },
-  ];
-
   const partnerEmails = ['partner@zubkas.com', 'neha@zubkas.com', 'rahul@zubkas.com', 'anita@zubkas.com', 'suresh@zubkas.com'];
   const adminEmails = ['admin@zubkas.com', 'employee@zubkas.com', 'support@zubkas.com'];
 
@@ -54,7 +44,7 @@ export function LoginPage({ onBack }: LoginPageProps) {
     setLoading(true);
     setTimeout(() => {
       const success = login(email, password);
-      if (!success) setError('Invalid email or password. Use a demo account below to try it out.');
+      if (!success) setError('Invalid email or password. Please check your credentials and try again.');
       setLoading(false);
     }, 500);
   };
@@ -96,12 +86,6 @@ export function LoginPage({ onBack }: LoginPageProps) {
     setPassword('');
     setOtp('');
     setOtpSent(false);
-    setError('');
-  };
-
-  const fillDemoAccount = (demoEmail: string) => {
-    setEmail(demoEmail);
-    setPassword('demo1234');
     setError('');
   };
 
@@ -188,12 +172,7 @@ export function LoginPage({ onBack }: LoginPageProps) {
       </div>
 
       {/* Right side — glassmorphic login card */}
-      <div className="relative flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-zubkas-50/30 px-6 py-10 lg:w-1/2 lg:px-12">
-        {/* Background decoration */}
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute top-10 right-10 h-48 w-48 rounded-full bg-zubkas-100/30 blur-3xl" />
-          <div className="absolute bottom-10 left-10 h-56 w-56 rounded-full bg-zubkas-50/50 blur-3xl" />
-        </div>
+      <div className="relative flex items-center justify-center bg-white px-6 py-10 lg:w-1/2 lg:px-12">
 
         <div className="relative z-10 w-full max-w-md animate-slide-up">
           {/* Glassmorphic card */}
@@ -324,7 +303,7 @@ export function LoginPage({ onBack }: LoginPageProps) {
               <form onSubmit={handleVerifyOtp} className="mt-6 space-y-4">
                 <div className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700 flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 shrink-0" />
-                  OTP sent to {email}. Use any 6 digits for this demo.
+                  OTP sent to {email}. Please enter the 6-digit code to continue.
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">Enter 6-digit OTP</label>
@@ -347,24 +326,6 @@ export function LoginPage({ onBack }: LoginPageProps) {
                 </button>
               </form>
             )}
-
-            {/* Demo accounts */}
-            <div className="mt-6 border-t border-gray-100 pt-4">
-              <p className="text-xs font-medium text-gray-400 mb-2">Demo accounts — click to auto-fill:</p>
-              <div className="flex flex-wrap gap-2">
-                {(mode === 'partner' ? partnerDemoAccounts : adminDemoAccounts).map(acc => (
-                  <button
-                    key={acc.email}
-                    type="button"
-                    onClick={() => fillDemoAccount(acc.email)}
-                    className="rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs text-gray-600 transition-all hover:border-zubkas-300 hover:bg-zubkas-50 hover:text-zubkas-700"
-                  >
-                    {acc.label}
-                    <span className="block text-[10px] text-gray-400">{acc.email}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
 
           </div>
         </div>
