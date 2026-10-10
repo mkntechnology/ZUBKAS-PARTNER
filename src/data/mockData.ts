@@ -106,6 +106,8 @@ export const leads: Lead[] = [
   { id: 'l-5', partnerId: 'partner-4', partnerName: 'Anita Desai', companyName: 'TechNova Labs', contactName: 'Aditya Rao', email: 'aditya@technovalabs.com', phone: '+91 70000 10005', status: 'Locked', submittedDate: '2026-10-07', lockEndDate: '2026-10-10', notes: 'Exploring Workspace for 200 users' },
   { id: 'l-6', partnerId: 'partner-2', partnerName: 'Neha Gupta', companyName: 'BlueWave Pharma', contactName: 'Nikhil Deshmukh', email: 'nikhil@bluewavepharma.com', phone: '+91 70000 10006', status: 'Lost', submittedDate: '2026-08-20', lockEndDate: '2026-08-23', notes: 'Went with competitor' },
   { id: 'l-7', partnerId: 'partner-5', partnerName: 'Suresh Patel', companyName: 'Metro Mart Chain', contactName: 'Pallavi Kulkarni', email: 'pallavi@metromart.com', phone: '+91 70000 10007', status: 'Locked', submittedDate: '2026-10-07', lockEndDate: '2026-10-10', notes: '50-store POS deployment' },
+  { id: 'l-8', partnerId: 'partner-1', partnerName: 'Vikram Singh', companyName: 'Horizon Tech Solutions', contactName: 'Kavya Iyengar', email: 'kavya@horizontech.com', phone: '+91 70000 10008', status: 'Pending Approval', submittedDate: '2026-10-09', lockEndDate: '2026-10-09', notes: 'Interested in Workspace for 500 users' },
+  { id: 'l-9', partnerId: 'partner-3', partnerName: 'Rahul Verma', companyName: 'Verma Logistics Co', contactName: 'Arjun Nair', email: 'arjun@vermalogistics.com', phone: '+91 70000 10009', status: 'Pending Approval', submittedDate: '2026-10-09', lockEndDate: '2026-10-09', notes: 'Needs Storepulse for 12 warehouses' },
 ];
 
 export const employees: Employee[] = [

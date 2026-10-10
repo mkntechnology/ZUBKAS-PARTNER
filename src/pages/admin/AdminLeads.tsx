@@ -1,36 +1,108 @@
 import { useState } from 'react';
-import { Search, Lock, CheckCircle2, XCircle, Clock, Trash2, TriangleAlert as AlertTriangle } from 'lucide-react';
+import {
+  Search, Lock, CheckCircle2, XCircle, Clock, Trash2,
+  TriangleAlert as AlertTriangle, Check, X, Hourglass,
+  Package, DollarSign, Percent,
+} from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader, EmptyState } from '@/components/Shared';
 import { Modal } from '@/components/Modal';
 import { formatDate, daysUntil } from '@/utils/helpers';
-import type { Lead } from '@/types';
+import type { Lead, PlanType } from '@/types';
 
-const statusConfig = {
-  Locked: { icon: Lock, badge: 'badge-warning', text: 'text-amber-700' },
-  Open: { icon: Clock, badge: 'badge-neutral', text: 'text-gray-600' },
-  Converted: { icon: CheckCircle2, badge: 'badge-success', text: 'text-emerald-700' },
-  Lost: { icon: XCircle, badge: 'badge-error', text: 'text-red-700' },
+const statusConfig: Record<Lead['status'], { icon: typeof Lock; badge: string; text: string }> = {
+  'Pending Approval': { icon: Hourglass, badge: 'badge-neutral', text: 'text-blue-700' },
+  Locked:            { icon: Lock,        badge: 'badge-warning', text: 'text-amber-700' },
+  Open:              { icon: Clock,       badge: 'badge-neutral', text: 'text-gray-600'  },
+  Converted:         { icon: CheckCircle2, badge: 'badge-success', text: 'text-emerald-700' },
+  Lost:              { icon: XCircle,     badge: 'badge-error',   text: 'text-red-700'   },
+  Rejected:          { icon: XCircle,     badge: 'badge-error',   text: 'text-red-700'   },
 };
 
+const statusOrder: Lead['status'][] = ['Pending Approval', 'Locked', 'Open', 'Converted', 'Lost', 'Rejected'];
+
+interface ApprovalForm {
+  productId: string;
+  planType: PlanType;
+  planPrice: string;
+  commissionRate: string;
+}
+
 export function AdminLeads() {
-  const { leads, deleteLead } = useApp();
+  const { leads, products, settings, deleteLead, updateLeadStatus, approveLead } = useApp();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null);
+  const [approveTarget, setApproveTarget] = useState<Lead | null>(null);
+  const [pendingTarget, setPendingTarget] = useState<Lead | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<Lead | null>(null);
+  const [approvalForm, setApprovalForm] = useState<ApprovalForm>({
+    productId: '',
+    planType: 'Monthly',
+    planPrice: '',
+    commissionRate: '15',
+  });
+  const [approvalErrors, setApprovalErrors] = useState<Partial<ApprovalForm>>({});
 
   const filtered = leads.filter(l =>
-    (l.companyName.toLowerCase().includes(search.toLowerCase()) || l.partnerName.toLowerCase().includes(search.toLowerCase())) &&
+    (l.companyName.toLowerCase().includes(search.toLowerCase()) ||
+     l.partnerName.toLowerCase().includes(search.toLowerCase())) &&
     (statusFilter === 'All' || l.status === statusFilter)
   );
 
+  const pendingCount = leads.filter(l => l.status === 'Pending Approval').length;
+
+  const openApprove = (lead: Lead) => {
+    setApprovalForm({
+      productId: lead.productId ?? '',
+      planType: lead.planType ?? 'Monthly',
+      planPrice: lead.planPrice ? String(lead.planPrice) : '',
+      commissionRate: lead.commissionRate ? String(lead.commissionRate) : '15',
+    });
+    setApprovalErrors({});
+    setApproveTarget(lead);
+  };
+
+  const validateApproval = (): boolean => {
+    const errs: Partial<ApprovalForm> = {};
+    if (!approvalForm.productId) errs.productId = 'Required';
+    const price = Number(approvalForm.planPrice);
+    if (!approvalForm.planPrice || isNaN(price) || price <= 0) errs.planPrice = 'Enter a valid price';
+    const rate = Number(approvalForm.commissionRate);
+    if (!approvalForm.commissionRate || isNaN(rate) || rate < 0 || rate > 100) errs.commissionRate = '0–100%';
+    setApprovalErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const confirmApprove = () => {
+    if (!approveTarget || !validateApproval()) return;
+    const selectedProduct = products.find(p => p.id === approvalForm.productId);
+    approveLead(approveTarget.id, {
+      productId: approvalForm.productId || undefined,
+      productName: selectedProduct?.name,
+      planType: approvalForm.planType,
+      planPrice: Number(approvalForm.planPrice),
+      commissionRate: Number(approvalForm.commissionRate),
+    });
+    setApproveTarget(null);
+  };
+
+  const selectedProduct = products.find(p => p.id === approvalForm.productId);
+  const estimatedCommission =
+    approvalForm.planPrice && approvalForm.commissionRate
+      ? ((Number(approvalForm.planPrice) * Number(approvalForm.commissionRate)) / 100)
+      : null;
+
   return (
     <div className="space-y-6">
-      <SectionHeader title="All Leads" subtitle={`${leads.length} leads across all partners`} />
+      <SectionHeader
+        title="All Leads"
+        subtitle={`${leads.length} leads across all partners${pendingCount > 0 ? ` · ${pendingCount} pending approval` : ''}`}
+      />
 
       {/* Stats */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-        {(['Locked', 'Open', 'Converted', 'Lost'] as const).map(s => {
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        {statusOrder.map(s => {
           const cfg = statusConfig[s];
           const Icon = cfg.icon;
           const count = leads.filter(l => l.status === s).length;
@@ -46,17 +118,41 @@ export function AdminLeads() {
         })}
       </div>
 
+      {/* Pending approval alert */}
+      {pendingCount > 0 && (
+        <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 flex items-start gap-3">
+          <Hourglass className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-amber-800">
+              {pendingCount} Lead{pendingCount > 1 ? 's' : ''} Awaiting Your Review
+            </p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              Review and approve (with financial details), keep pending, or reject submitted leads below.
+              Approved leads become visible to the partner and are locked for {settings.leadLockDays} days.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input type="text" placeholder="Search by company or partner..." value={search} onChange={(e) => setSearch(e.target.value)} className="input-field pl-9" />
+          <input
+            type="text"
+            placeholder="Search by company or partner..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="input-field pl-9"
+          />
         </div>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input-field sm:w-40">
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="input-field sm:w-44">
           <option>All</option>
+          <option>Pending Approval</option>
           <option>Locked</option>
           <option>Open</option>
           <option>Converted</option>
           <option>Lost</option>
+          <option>Rejected</option>
         </select>
       </div>
 
@@ -74,7 +170,8 @@ export function AdminLeads() {
                   <th className="px-4 py-3 text-left font-medium text-gray-500">Submitted</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500">Lock Ends</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500">Status</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-500">Notes</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-500">Product / Plan</th>
+                  <th className="px-4 py-3 text-center font-medium text-gray-500">Actions</th>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
@@ -83,8 +180,15 @@ export function AdminLeads() {
                   const cfg = statusConfig[l.status];
                   const Icon = cfg.icon;
                   const lockDaysLeft = daysUntil(l.lockEndDate);
+                  const isPending = l.status === 'Pending Approval';
+                  const isRejected = l.status === 'Rejected';
                   return (
-                    <tr key={l.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                    <tr
+                      key={l.id}
+                      className={`border-b border-gray-50 transition-colors ${
+                        isPending ? 'bg-amber-50/40' : isRejected ? 'bg-red-50/20' : 'hover:bg-gray-50/50'
+                      }`}
+                    >
                       <td className="px-4 py-3 font-medium text-gray-900">{l.companyName}</td>
                       <td className="px-4 py-3">
                         <p className="text-gray-900">{l.contactName}</p>
@@ -94,7 +198,7 @@ export function AdminLeads() {
                       <td className="px-4 py-3 text-gray-500 text-xs">{formatDate(l.submittedDate)}</td>
                       <td className="px-4 py-3 text-xs">
                         {l.status === 'Locked' && lockDaysLeft > 0 ? (
-                          <span className="text-amber-600 font-medium">{lockDaysLeft} day{lockDaysLeft > 1 ? 's' : ''} left</span>
+                          <span className="text-amber-600 font-medium">{lockDaysLeft}d left</span>
                         ) : (
                           <span className="text-gray-400">{formatDate(l.lockEndDate)}</span>
                         )}
@@ -105,9 +209,57 @@ export function AdminLeads() {
                           {l.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-gray-500 text-xs max-w-xs truncate">{l.notes}</td>
+                      <td className="px-4 py-3 text-xs text-gray-600">
+                        {l.productName ? (
+                          <div>
+                            <p className="font-medium text-gray-800">{l.productName}</p>
+                            <p className="text-gray-500">
+                              {l.planType ?? '—'}
+                              {l.planPrice ? ` · ₹${l.planPrice.toLocaleString()}` : ''}
+                              {l.commissionRate != null ? ` · ${l.commissionRate}%` : ''}
+                            </p>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
-                        <button onClick={() => setDeleteTarget(l)} className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors" title="Delete lead">
+                        <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                          <button
+                            onClick={() => openApprove(l)}
+                            disabled={l.status === 'Locked'}
+                            className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40"
+                            title="Approve lead"
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => setPendingTarget(l)}
+                            disabled={l.status === 'Pending Approval'}
+                            className="inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-40"
+                            title="Set as pending"
+                          >
+                            <Hourglass className="h-3.5 w-3.5" />
+                            Pending
+                          </button>
+                          <button
+                            onClick={() => setRejectTarget(l)}
+                            disabled={l.status === 'Rejected'}
+                            className="inline-flex items-center gap-1 rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40"
+                            title="Reject lead"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                            Reject
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => setDeleteTarget(l)}
+                          className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                          title="Delete lead"
+                        >
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </td>
@@ -120,7 +272,213 @@ export function AdminLeads() {
         )}
       </div>
 
-      {/* Delete Confirmation Modal */}
+      {/* ── Approval Modal ────────────────────────────────────────────── */}
+      <Modal
+        open={!!approveTarget}
+        onClose={() => setApproveTarget(null)}
+        title="Approve Lead"
+        size="lg"
+      >
+        {approveTarget && (
+          <div className="space-y-5">
+            {/* Lead summary */}
+            <div className="rounded-xl bg-gray-50 border border-gray-200 p-4 space-y-1">
+              <p className="text-sm font-semibold text-gray-900">{approveTarget.companyName}</p>
+              <p className="text-xs text-gray-600">Contact: {approveTarget.contactName} · {approveTarget.phone}</p>
+              <p className="text-xs text-gray-500">Partner: {approveTarget.partnerName} · Submitted {formatDate(approveTarget.submittedDate)}</p>
+              {approveTarget.notes && <p className="text-xs text-gray-500 italic mt-1">"{approveTarget.notes}"</p>}
+            </div>
+
+            <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 flex items-center gap-2">
+              <Lock className="h-4 w-4 text-emerald-600 shrink-0" />
+              <p className="text-xs text-emerald-700">
+                After approval, this lead will be <strong>locked for {settings.leadLockDays} days</strong> and become visible in the partner's active leads list. A notification will be sent to the partner.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                <Package className="h-4 w-4 text-gray-500" />
+                Product &amp; Plan Details
+              </h4>
+
+              {/* Product */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Product <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={approvalForm.productId}
+                  onChange={e => setApprovalForm(f => ({ ...f, productId: e.target.value }))}
+                  className={`input-field ${approvalErrors.productId ? 'border-red-400' : ''}`}
+                >
+                  <option value="">— Select a product —</option>
+                  {products.filter(p => p.status !== 'Coming Soon').map(p => (
+                    <option key={p.id} value={p.id}>{p.name} — {p.price}</option>
+                  ))}
+                </select>
+                {approvalErrors.productId && (
+                  <p className="text-xs text-red-500 mt-1">{approvalErrors.productId}</p>
+                )}
+                {selectedProduct && (
+                  <div className="mt-2 rounded-lg bg-zubkas-50 border border-zubkas-100 px-3 py-2 text-xs text-zubkas-700">
+                    <span className="font-semibold">{selectedProduct.name}</span>
+                    {selectedProduct.commissionEligible
+                      ? ` · Commission eligible (${selectedProduct.commissionRate})`
+                      : ' · Not commission eligible'}
+                    {' · '}{selectedProduct.price}
+                  </div>
+                )}
+              </div>
+
+              {/* Plan type */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Plan Type</label>
+                <div className="flex gap-3">
+                  {(['Monthly', 'Yearly'] as const).map(pt => (
+                    <button
+                      key={pt}
+                      type="button"
+                      onClick={() => setApprovalForm(f => ({ ...f, planType: pt }))}
+                      className={`flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all ${
+                        approvalForm.planType === pt
+                          ? 'border-zubkas-700 bg-zubkas-50 text-zubkas-700'
+                          : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Price & Commission side by side */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Plan Price (₹) <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="number"
+                      min={0}
+                      placeholder="e.g. 999"
+                      value={approvalForm.planPrice}
+                      onChange={e => setApprovalForm(f => ({ ...f, planPrice: e.target.value }))}
+                      className={`input-field pl-9 ${approvalErrors.planPrice ? 'border-red-400' : ''}`}
+                    />
+                  </div>
+                  {approvalErrors.planPrice && (
+                    <p className="text-xs text-red-500 mt-1">{approvalErrors.planPrice}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Partner Commission % <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Percent className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={0.5}
+                      placeholder="e.g. 15"
+                      value={approvalForm.commissionRate}
+                      onChange={e => setApprovalForm(f => ({ ...f, commissionRate: e.target.value }))}
+                      className={`input-field pl-9 ${approvalErrors.commissionRate ? 'border-red-400' : ''}`}
+                    />
+                  </div>
+                  {approvalErrors.commissionRate && (
+                    <p className="text-xs text-red-500 mt-1">{approvalErrors.commissionRate}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Commission preview */}
+              {estimatedCommission !== null && estimatedCommission > 0 && (
+                <div className="rounded-lg bg-emerald-50 border border-emerald-100 px-4 py-3 flex items-center justify-between">
+                  <span className="text-sm text-emerald-700 font-medium">Estimated commission per period</span>
+                  <span className="text-lg font-display font-bold text-emerald-700">
+                    ₹{estimatedCommission.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => setApproveTarget(null)} className="btn-ghost flex-1">Cancel</button>
+              <button
+                onClick={confirmApprove}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-emerald-700 active:scale-[0.98] flex-1"
+              >
+                <Check className="h-4 w-4" />
+                Confirm Approval
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ── Set Pending Modal ─────────────────────────────────────────── */}
+      <Modal open={!!pendingTarget} onClose={() => setPendingTarget(null)} title="Set Lead Pending" size="sm">
+        {pendingTarget && (
+          <div className="space-y-4">
+            <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 flex items-start gap-3">
+              <Hourglass className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-amber-900">Set lead back to pending?</p>
+                <p className="text-xs text-amber-700 mt-1">
+                  The lead for <span className="font-semibold">{pendingTarget.companyName}</span> will be set back to
+                  "Pending Approval" and hidden from the partner's active leads.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setPendingTarget(null)} className="btn-ghost flex-1">Cancel</button>
+              <button
+                onClick={() => { updateLeadStatus(pendingTarget.id, 'Pending Approval'); setPendingTarget(null); }}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-amber-700 active:scale-[0.98] flex-1"
+              >
+                <Hourglass className="h-4 w-4" />
+                Set Pending
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ── Reject Modal ──────────────────────────────────────────────── */}
+      <Modal open={!!rejectTarget} onClose={() => setRejectTarget(null)} title="Reject Lead" size="sm">
+        {rejectTarget && (
+          <div className="space-y-4">
+            <div className="rounded-lg bg-red-50 border border-red-200 p-4 flex items-start gap-3">
+              <X className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-red-900">Reject this lead?</p>
+                <p className="text-xs text-red-700 mt-1">
+                  The lead for <span className="font-semibold">{rejectTarget.companyName}</span> will be rejected
+                  and hidden from the partner's active leads list.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setRejectTarget(null)} className="btn-ghost flex-1">Cancel</button>
+              <button
+                onClick={() => { updateLeadStatus(rejectTarget.id, 'Rejected'); setRejectTarget(null); }}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-red-700 active:scale-[0.98] flex-1"
+              >
+                <X className="h-4 w-4" />
+                Reject Lead
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ── Delete Modal ──────────────────────────────────────────────── */}
       <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete Lead" size="sm">
         {deleteTarget && (
           <div className="space-y-4">
@@ -129,7 +487,8 @@ export function AdminLeads() {
               <div>
                 <p className="text-sm font-medium text-red-900">This action cannot be undone.</p>
                 <p className="text-xs text-red-700 mt-1">
-                  The lead for <span className="font-semibold">{deleteTarget.companyName}</span> (contact: {deleteTarget.contactName}) will be permanently removed from the system.
+                  The lead for <span className="font-semibold">{deleteTarget.companyName}</span> (contact:{' '}
+                  {deleteTarget.contactName}) will be permanently removed from the system.
                 </p>
               </div>
             </div>

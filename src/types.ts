@@ -69,10 +69,15 @@ export interface Lead {
   contactName: string;
   email: string;
   phone: string;
-  status: 'Locked' | 'Open' | 'Converted' | 'Lost';
+  status: 'Pending Approval' | 'Locked' | 'Open' | 'Converted' | 'Lost' | 'Rejected';
   submittedDate: string;
   lockEndDate: string;
   notes: string;
+  productId?: string;
+  productName?: string;
+  planType?: PlanType;
+  planPrice?: number;
+  commissionRate?: number;
 }
 
 export interface Partner {

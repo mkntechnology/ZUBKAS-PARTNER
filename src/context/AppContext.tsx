@@ -61,7 +61,10 @@ interface AppContextValue {
   addAnnouncement: (a: Omit<Announcement, 'id' | 'date' | 'author' | 'authorRole' | 'isPinned'>) => void;
   deleteAnnouncement: (id: string) => void;
   deleteLead: (id: string) => void;
+  updateLeadStatus: (id: string, status: Lead['status']) => void;
+  approveLead: (id: string, details: { productId?: string; productName?: string; planType: Lead['planType']; planPrice: number; commissionRate: number }) => void;
   addLead: (l: Omit<Lead, 'id' | 'submittedDate' | 'lockEndDate' | 'status' | 'partnerName'>) => boolean;
+  addCustomer: (c: Omit<Customer, 'id' | 'commissionEarned' | 'commissionEndDate' | 'monthsElapsed' | 'remainingMonths'>) => void;
   markNotificationRead: (id: string) => void;
   markAllRead: () => void;
   updateSettings: (s: Partial<AppSettings>) => void;
@@ -213,6 +216,59 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLeads(prev => prev.filter(l => l.id !== id));
   }, [setLeads]);
 
+  const updateLeadStatus: AppContextValue['updateLeadStatus'] = useCallback((id, status) => {
+    setLeads(prev => prev.map(l => l.id !== id ? l : { ...l, status }));
+  }, [setLeads]);
+
+  const approveLead: AppContextValue['approveLead'] = useCallback((id, details) => {
+    const lockEnd = new Date('2026-10-08');
+    lockEnd.setDate(lockEnd.getDate() + settings.leadLockDays);
+    const lockEndDate = lockEnd.toISOString().split('T')[0];
+    setLeads(prev => prev.map(l =>
+      l.id !== id ? l : {
+        ...l,
+        status: 'Locked',
+        lockEndDate,
+        productId: details.productId,
+        productName: details.productName,
+        planType: details.planType,
+        planPrice: details.planPrice,
+        commissionRate: details.commissionRate,
+      }
+    ));
+    const lead = leads.find(l => l.id === id);
+    if (lead) {
+      setNotifications(prev => [...prev, {
+        id: `n-${Date.now()}`,
+        userId: lead.partnerId,
+        title: 'Lead Approved',
+        message: `Your lead "${lead.companyName}" has been approved and is now locked for ${settings.leadLockDays} days.`,
+        type: 'lead',
+        date: '2026-10-08',
+        read: false,
+      }]);
+    }
+  }, [leads, settings.leadLockDays, setLeads, setNotifications]);
+
+  const addCustomer: AppContextValue['addCustomer'] = useCallback((c) => {
+    const start = new Date(c.startDate);
+    const now = new Date('2026-10-08');
+    const monthsElapsed = c.planType === 'Yearly'
+      ? 1
+      : Math.max(0, (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth()));
+    const remainingMonths = c.planType === 'Yearly' ? 0 : Math.max(0, 12 - monthsElapsed);
+    const commissionEndDate = new Date(start.getFullYear() + 1, start.getMonth(), start.getDate()).toISOString().split('T')[0];
+    const newCustomer: Customer = {
+      ...c,
+      id: `c-${Date.now()}`,
+      commissionEarned: 0,
+      commissionEndDate,
+      monthsElapsed,
+      remainingMonths,
+    };
+    setCustomers(prev => [...prev, newCustomer]);
+  }, [setCustomers]);
+
   const addAnnouncement: AppContextValue['addAnnouncement'] = useCallback((a) => {
     const newAnn: Announcement = {
       ...a,
@@ -239,28 +295,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLeads(prev => {
       const existing = prev.find(
         ld => ld.companyName.toLowerCase() === l.companyName.toLowerCase() &&
-          ld.status === 'Locked' &&
-          new Date(ld.lockEndDate) > new Date('2026-10-08')
+          (ld.status === 'Locked' || ld.status === 'Pending Approval') &&
+          ld.partnerId !== l.partnerId
       );
-      if (existing && existing.partnerId !== l.partnerId) {
+      if (existing) {
         success = false;
         return prev;
       }
-      const lockEnd = new Date('2026-10-08');
-      lockEnd.setDate(lockEnd.getDate() + settings.leadLockDays);
       const partner = partners.find(p => p.id === l.partnerId);
       const newLead: Lead = {
         ...l,
         id: `l-${Date.now()}`,
-        status: 'Locked',
+        status: 'Pending Approval',
         submittedDate: '2026-10-08',
-        lockEndDate: lockEnd.toISOString().split('T')[0],
+        lockEndDate: '2026-10-08',
         partnerName: partner?.name ?? 'Unknown',
       };
       return [...prev, newLead];
     });
     return success;
-  }, [leads, partners, settings.leadLockDays, setLeads]);
+  }, [leads, partners, setLeads]);
 
   const markNotificationRead = useCallback((id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
@@ -408,7 +462,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       currentUser, login, loginOtp, logout,
       partners, customers, leads, employees, categories, announcements, notifications, plans, products, settings, siteContent, transactions, roles,
       hasPermission, getEmployeePermissions, addRole, updateRole, deleteRole, assignEmployeeRole,
-      addPartner, deletePartner, addEmployee, deleteEmployee, addCategory, deleteCategory, addPlan, deletePlan, addProduct, deleteProduct, addAnnouncement, deleteAnnouncement, addLead, deleteLead,
+      addPartner, deletePartner, addEmployee, deleteEmployee, addCategory, deleteCategory, addPlan, deletePlan, addProduct, deleteProduct, addAnnouncement, deleteAnnouncement, addLead, deleteLead, updateLeadStatus, approveLead, addCustomer,
       markNotificationRead, markAllRead, updateSettings, updateSiteContent, resetSiteContent,
       clearDemoData, resetAllData, updateUserProfile, updateUserPassword,
       chatThreads, chatMessages, startChatThread, sendChatMessage, markThreadReadByPartner, markThreadReadBySupport, closeChatThread, reopenChatThread, totalUnreadChatBySupport,

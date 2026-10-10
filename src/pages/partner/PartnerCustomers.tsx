@@ -1,14 +1,43 @@
 import { useState } from 'react';
-import { Search, MessageCircle, AlertTriangle, DollarSign, Clock, Users2 } from 'lucide-react';
+import { Search, MessageCircle, TriangleAlert as AlertTriangle, DollarSign, Clock, Users as Users2, UserPlus, CircleCheck as CheckCircle2, Building2, Mail, Phone } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader, EmptyState } from '@/components/Shared';
+import { Modal } from '@/components/Modal';
 import { formatCurrency, formatDate } from '@/utils/helpers';
+import type { PlanType, PlanTier } from '@/types';
+
+interface CustomerForm {
+  name: string;
+  companyName: string;
+  phone: string;
+  email: string;
+  whatsapp: string;
+  planType: PlanType;
+  planTier: PlanTier;
+  commissionRate: string;
+  subscriptionAmount: string;
+}
+
+const emptyForm: CustomerForm = {
+  name: '',
+  companyName: '',
+  phone: '',
+  email: '',
+  whatsapp: '',
+  planType: 'Monthly',
+  planTier: 'Free',
+  commissionRate: '5',
+  subscriptionAmount: '2000',
+};
 
 export function PartnerCustomers() {
-  const { currentUser, customers } = useApp();
+  const { currentUser, customers, plans, addCustomer } = useApp();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [planFilter, setPlanFilter] = useState('All');
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState<CustomerForm>(emptyForm);
+  const [success, setSuccess] = useState('');
 
   const myCustomers = customers.filter(c => c.partnerId === currentUser?.partnerId);
   const filtered = myCustomers.filter(c =>
@@ -20,9 +49,47 @@ export function PartnerCustomers() {
   const totalEarned = myCustomers.reduce((s, c) => s + c.commissionEarned, 0);
   const blockedCommission = myCustomers.filter(c => c.status === 'Unpaid').reduce((s, c) => s + (c.subscriptionAmount * c.commissionRate / 100), 0);
 
+  const handlePlanTierChange = (tier: PlanTier) => {
+    const plan = plans.find(p => p.name === (tier === 'Free' ? 'Free Plan' : 'Premium Plan'));
+    const rate = plan?.commissionRate ?? (tier === 'Free' ? 5 : 15);
+    setForm(prev => ({ ...prev, planTier: tier, commissionRate: String(rate) }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const today = new Date('2026-10-08').toISOString().split('T')[0];
+    const renewalDate = form.planType === 'Yearly'
+      ? new Date(new Date('2026-10-08').setFullYear(new Date('2026-10-08').getFullYear() + 1)).toISOString().split('T')[0]
+      : new Date(new Date('2026-10-08').setMonth(new Date('2026-10-08').getMonth() + 2)).toISOString().split('T')[0];
+
+    addCustomer({
+      partnerId: currentUser?.partnerId ?? '',
+      name: form.name,
+      companyName: form.companyName,
+      phone: form.phone,
+      email: form.email,
+      whatsapp: form.whatsapp,
+      planType: form.planType,
+      planTier: form.planTier,
+      commissionRate: Number(form.commissionRate),
+      subscriptionAmount: Number(form.subscriptionAmount),
+      startDate: today,
+      renewalDate,
+      status: 'Active',
+    });
+
+    setSuccess(`Customer "${form.name}" has been added successfully!`);
+    setForm(emptyForm);
+    setTimeout(() => { setShowAdd(false); setSuccess(''); }, 2500);
+  };
+
   return (
     <div className="space-y-6">
-      <SectionHeader title="My Customers" subtitle={`${myCustomers.length} customers referred by you`} />
+      <SectionHeader
+        title="My Customers"
+        subtitle={`${myCustomers.length} customers referred by you`}
+        action={<button onClick={() => { setForm(emptyForm); setShowAdd(true); }} className="btn-primary"><UserPlus className="h-4 w-4" /> Add Customer</button>}
+      />
 
       {/* Summary cards */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
@@ -140,6 +207,89 @@ export function PartnerCustomers() {
           </div>
         )}
       </div>
+
+      {/* Add Customer Modal */}
+      <Modal open={showAdd} onClose={() => { setShowAdd(false); setSuccess(''); }} title="Add New Customer" size="lg">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {success && (
+            <div className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-600 flex items-start gap-2 animate-fade-in">
+              <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
+              {success}
+            </div>
+          )}
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="text-sm font-medium text-gray-700">Customer Name <span className="text-red-500">*</span></label>
+              <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input-field mt-1" placeholder="Full name" />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Company Name <span className="text-red-500">*</span></label>
+              <div className="relative mt-1">
+                <Building2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input required value={form.companyName} onChange={(e) => setForm({ ...form, companyName: e.target.value })} className="input-field pl-9" placeholder="Company Pvt Ltd" />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="text-sm font-medium text-gray-700">Email <span className="text-red-500">*</span></label>
+              <div className="relative mt-1">
+                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-field pl-9" placeholder="customer@company.com" />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Phone Number <span className="text-red-500">*</span></label>
+              <div className="relative mt-1">
+                <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="input-field pl-9" placeholder="+91 98765 43210" />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-gray-700">WhatsApp Number <span className="text-red-500">*</span></label>
+            <div className="relative mt-1">
+              <MessageCircle className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input required value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} className="input-field pl-9" placeholder="+91 98765 43210" />
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div>
+              <label className="text-sm font-medium text-gray-700">Plan Tier <span className="text-red-500">*</span></label>
+              <select value={form.planTier} onChange={(e) => handlePlanTierChange(e.target.value as PlanTier)} className="input-field mt-1">
+                <option value="Free">Free</option>
+                <option value="Premium">Premium</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Plan Type <span className="text-red-500">*</span></label>
+              <select value={form.planType} onChange={(e) => setForm({ ...form, planType: e.target.value as PlanType })} className="input-field mt-1">
+                <option value="Monthly">Monthly</option>
+                <option value="Yearly">Yearly</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Commission Rate (%)</label>
+              <input value={form.commissionRate} onChange={(e) => setForm({ ...form, commissionRate: e.target.value })} className="input-field mt-1" readOnly />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-gray-700">Subscription Amount (₹) <span className="text-red-500">*</span></label>
+            <input required type="number" min="1" value={form.subscriptionAmount} onChange={(e) => setForm({ ...form, subscriptionAmount: e.target.value })} className="input-field mt-1" placeholder="2000" />
+          </div>
+
+          <div className="rounded-lg bg-zubkas-50 p-3 text-xs text-zubkas-700">
+            Commission rate is automatically set based on the plan tier: Free = 5%, Premium = 15%. The customer will start earning commission from today.
+          </div>
+
+          <button type="submit" className="btn-primary w-full"><UserPlus className="h-4 w-4" /> Add Customer</button>
+        </form>
+      </Modal>
     </div>
   );
 }
