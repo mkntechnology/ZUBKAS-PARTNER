@@ -1,4 +1,4 @@
-import { createContext, useContext, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useCallback, useRef, type ReactNode } from 'react';
 import type {
   User, Partner, Customer, Lead, Employee, Category,
   Announcement, Notification, Plan, AppSettings, Product, SiteContent,
@@ -93,10 +93,16 @@ interface AppContextValue {
 const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const hasHardReset = useRef(false);
+  if (!hasHardReset.current) {
+    localStorage.clear();
+    hasHardReset.current = true;
+  }
+
   const [currentUser, setCurrentUser] = usePersistentState<User | null>('zubkas_currentUser', null);
   const [partners, setPartners] = usePersistentState<Partner[]>('zubkas_partners', mock.partners);
-  const [customers, setCustomers] = usePersistentState<Customer[]>('zubkas_customers', mock.customers);
-  const [leads, setLeads] = usePersistentState<Lead[]>('zubkas_leads', mock.leads);
+  const [customers, setCustomers] = usePersistentState<Customer[]>('zubkas_customers', []);
+  const [leads, setLeads] = usePersistentState<Lead[]>('zubkas_leads', []);
   const [employees, setEmployees] = usePersistentState<Employee[]>('zubkas_employees', mock.employees);
   const [categories, setCategories] = usePersistentState<Category[]>('zubkas_categories', mock.categories);
   const [announcements, setAnnouncements] = usePersistentState<Announcement[]>('zubkas_announcements', mock.announcements);
@@ -105,7 +111,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = usePersistentState<Product[]>('zubkas_products', mock.products);
   const [settings, setSettings] = usePersistentState<AppSettings>('zubkas_settings', mock.appSettings);
   const [siteContent, setSiteContent] = usePersistentState<SiteContent>('zubkas_siteContent', mock.defaultSiteContent);
-  const [transactions, setTransactions] = usePersistentState<CommissionTransaction[]>('zubkas_transactions', mock.commissionTransactions);
+  const [transactions, setTransactions] = usePersistentState<CommissionTransaction[]>('zubkas_transactions', []);
   const [userPasswords, setUserPasswords] = usePersistentState<Record<string, string>>('zubkas_userPasswords', {});
   const [roles, setRoles] = usePersistentState<Role[]>('zubkas_roles', mock.defaultRoles);
   const [chatThreads, setChatThreads] = usePersistentState<ChatThread[]>('zubkas_chatThreads', []);
@@ -462,8 +468,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const resetAllData = useCallback(() => {
     setPartners(mock.partners);
-    setCustomers(mock.customers);
-    setLeads(mock.leads);
+    setCustomers([]);
+    setLeads([]);
     setEmployees(mock.employees);
     setCategories(mock.categories);
     setAnnouncements(mock.announcements);
@@ -472,7 +478,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setProducts(mock.products);
     setSettings(mock.appSettings);
     setSiteContent(mock.defaultSiteContent);
-    setTransactions(mock.commissionTransactions);
+    setTransactions([]);
     setUserPasswords({});
     setRoles(mock.defaultRoles);
     setChatThreads([]);
