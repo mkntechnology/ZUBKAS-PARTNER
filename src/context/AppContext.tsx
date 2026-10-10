@@ -3,7 +3,7 @@ import type {
   User, Partner, Customer, Lead, Employee, Category,
   Announcement, Notification, Plan, AppSettings, Product, SiteContent,
   CommissionTransaction, Role, AdminSectionKey,
-  ChatThread, ChatMessage,
+  ChatThread, ChatMessage, LeadPaymentStatus, PlanType,
 } from '@/types';
 import * as mock from '@/data/mockData';
 import { usePersistentState } from '@/utils/usePersistentState';
@@ -63,6 +63,8 @@ interface AppContextValue {
   deleteLead: (id: string) => void;
   updateLeadStatus: (id: string, status: Lead['status']) => void;
   approveLead: (id: string, details: { productId?: string; productName?: string; planType: Lead['planType']; planPrice: number; commissionRate: number }) => void;
+  updateLeadPayment: (id: string, details: { paymentStatus: LeadPaymentStatus; planPrice: number; commissionRate: number; renewalDate: string }) => void;
+  convertLead: (id: string) => void;
   addLead: (l: Omit<Lead, 'id' | 'submittedDate' | 'lockEndDate' | 'status' | 'partnerName'>) => boolean;
   adminAddLead: (l: { partnerId: string; companyName: string; contactName: string; email: string; phone: string; whatsapp: string; productId?: string; productName?: string; planType: PlanType; notes: string }) => void;
   addCustomer: (c: Omit<Customer, 'id' | 'commissionEarned' | 'commissionEndDate' | 'monthsElapsed' | 'remainingMonths'>) => void;
@@ -250,6 +252,81 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }]);
     }
   }, [leads, settings.leadLockDays, setLeads, setNotifications]);
+
+  const updateLeadPayment: AppContextValue['updateLeadPayment'] = useCallback((id, details) => {
+    setLeads(prev => prev.map(l =>
+      l.id !== id ? l : {
+        ...l,
+        paymentStatus: details.paymentStatus,
+        planPrice: details.planPrice,
+        commissionRate: details.commissionRate,
+        renewalDate: details.renewalDate,
+      }
+    ));
+    setCustomers(prev => prev.map(c =>
+      c.leadId !== id ? c : {
+        ...c,
+        status: details.paymentStatus === 'Paid' ? 'Active' : 'Unpaid',
+        commissionRate: details.commissionRate,
+        subscriptionAmount: details.planPrice,
+        renewalDate: details.renewalDate,
+      }
+    ));
+    const lead = leads.find(l => l.id === id);
+    if (lead) {
+      setNotifications(prev => [...prev, {
+        id: `n-${Date.now()}`,
+        userId: lead.partnerId,
+        title: details.paymentStatus === 'Paid' ? 'Payment Confirmed' : 'Payment Marked Unpaid',
+        message: `Payment for lead "${lead.companyName}" has been marked as ${details.paymentStatus} by admin.${details.paymentStatus === 'Unpaid' ? ' Commissions are paused until payment is confirmed.' : ''}`,
+        type: 'payment',
+        date: '2026-10-08',
+        read: false,
+      }]);
+    }
+  }, [leads, setLeads, setCustomers, setNotifications]);
+
+  const convertLead: AppContextValue['convertLead'] = useCallback((id) => {
+    const lead = leads.find(l => l.id === id);
+    if (!lead) return;
+    const startDate = '2026-10-08';
+    const renewalDate = lead.renewalDate ?? (lead.planType === 'Yearly'
+      ? new Date(2027, 9, 8).toISOString().split('T')[0]
+      : new Date(2026, 10, 8).toISOString().split('T')[0]);
+    const commissionEndDate = new Date(2027, 9, 8).toISOString().split('T')[0];
+    const newCustomer: Customer = {
+      id: `c-${Date.now()}`,
+      partnerId: lead.partnerId,
+      name: lead.contactName,
+      companyName: lead.companyName,
+      phone: lead.phone,
+      email: lead.email,
+      whatsapp: lead.whatsapp ?? lead.phone,
+      planType: lead.planType ?? 'Monthly',
+      planTier: 'Premium',
+      commissionRate: lead.commissionRate ?? 15,
+      subscriptionAmount: lead.planPrice ?? 0,
+      startDate,
+      renewalDate,
+      status: lead.paymentStatus === 'Paid' ? 'Active' : 'Unpaid',
+      commissionEarned: 0,
+      commissionEndDate,
+      monthsElapsed: 0,
+      remainingMonths: 12,
+      leadId: lead.id,
+    };
+    setCustomers(prev => [...prev, newCustomer]);
+    setLeads(prev => prev.map(l => l.id !== id ? l : { ...l, status: 'Converted' }));
+    setNotifications(prev => [...prev, {
+      id: `n-${Date.now()}`,
+      userId: lead.partnerId,
+      title: 'Lead Converted',
+      message: `Your lead "${lead.companyName}" has been converted to a customer.`,
+      type: 'lead',
+      date: '2026-10-08',
+      read: false,
+    }]);
+  }, [leads, setCustomers, setLeads, setNotifications]);
 
   const adminAddLead: AppContextValue['adminAddLead'] = useCallback((l) => {
     const partner = l.partnerId === 'none' ? null : partners.find(p => p.id === l.partnerId);
@@ -496,7 +573,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       currentUser, login, loginOtp, logout,
       partners, customers, leads, employees, categories, announcements, notifications, plans, products, settings, siteContent, transactions, roles,
       hasPermission, getEmployeePermissions, addRole, updateRole, deleteRole, assignEmployeeRole,
-      addPartner, deletePartner, addEmployee, deleteEmployee, addCategory, deleteCategory, addPlan, deletePlan, addProduct, deleteProduct, addAnnouncement, deleteAnnouncement, addLead, adminAddLead, deleteLead, updateLeadStatus, approveLead, addCustomer,
+      addPartner, deletePartner, addEmployee, deleteEmployee, addCategory, deleteCategory, addPlan, deletePlan, addProduct, deleteProduct, addAnnouncement, deleteAnnouncement, addLead, adminAddLead, deleteLead, updateLeadStatus, approveLead, updateLeadPayment, convertLead, addCustomer,
       markNotificationRead, markAllRead, updateSettings, updateSiteContent, resetSiteContent,
       clearDemoData, resetAllData, updateUserProfile, updateUserPassword,
       chatThreads, chatMessages, startChatThread, sendChatMessage, markThreadReadByPartner, markThreadReadBySupport, closeChatThread, reopenChatThread, totalUnreadChatBySupport,

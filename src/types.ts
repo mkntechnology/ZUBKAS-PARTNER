@@ -59,7 +59,10 @@ export interface Customer {
   commissionEndDate: string;
   monthsElapsed: number;
   remainingMonths: number;
+  leadId?: string;
 }
+
+export type LeadPaymentStatus = 'Paid' | 'Unpaid';
 
 export interface Lead {
   id: string;
@@ -79,6 +82,8 @@ export interface Lead {
   planType?: PlanType;
   planPrice?: number;
   commissionRate?: number;
+  paymentStatus?: LeadPaymentStatus;
+  renewalDate?: string;
 }
 
 export interface Partner {

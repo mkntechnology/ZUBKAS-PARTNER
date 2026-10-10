@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Search, Lock, CircleCheck as CheckCircle2, Circle as XCircle, Clock, Trash2, TriangleAlert as AlertTriangle, Check, X, Hourglass, Package, DollarSign, Percent, Plus, Layers, Building2, Mail, Phone, MessageCircle } from 'lucide-react';
+import { Search, Lock, CircleCheck as CheckCircle2, Circle as XCircle, Clock, Trash2, TriangleAlert as AlertTriangle, Check, X, Hourglass, Package, DollarSign, Percent, Plus, Layers, Building2, Mail, Phone, MessageCircle, CreditCard, Calendar } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader, EmptyState } from '@/components/Shared';
 import { Modal } from '@/components/Modal';
 import { formatDate, daysUntil } from '@/utils/helpers';
-import type { Lead, PlanType } from '@/types';
+import type { Lead, PlanType, LeadPaymentStatus } from '@/types';
 
 const statusConfig: Record<Lead['status'], { icon: typeof Lock; badge: string; text: string }> = {
   'Pending Approval': { icon: Hourglass, badge: 'badge-neutral', text: 'text-blue-700' },
@@ -22,6 +22,13 @@ interface ApprovalForm {
   planType: PlanType;
   planPrice: string;
   commissionRate: string;
+}
+
+interface PaymentForm {
+  paymentStatus: LeadPaymentStatus;
+  planPrice: string;
+  commissionRate: string;
+  renewalDate: string;
 }
 
 interface CreateLeadForm {
@@ -49,7 +56,7 @@ const emptyCreateForm: CreateLeadForm = {
 };
 
 export function AdminLeads() {
-  const { leads, products, partners, settings, deleteLead, updateLeadStatus, approveLead, adminAddLead } = useApp();
+  const { leads, products, partners, settings, deleteLead, updateLeadStatus, approveLead, adminAddLead, updateLeadPayment } = useApp();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null);
@@ -66,6 +73,14 @@ export function AdminLeads() {
     planPrice: '',
     commissionRate: '15',
   });
+  const [paymentTarget, setPaymentTarget] = useState<Lead | null>(null);
+  const [paymentForm, setPaymentForm] = useState<PaymentForm>({
+    paymentStatus: 'Unpaid',
+    planPrice: '',
+    commissionRate: '15',
+    renewalDate: '',
+  });
+  const [paymentErrors, setPaymentErrors] = useState<Partial<PaymentForm>>({});
   const [approvalErrors, setApprovalErrors] = useState<Partial<ApprovalForm>>({});
 
   const filtered = leads.filter(l =>
@@ -75,6 +90,44 @@ export function AdminLeads() {
   );
 
   const pendingCount = leads.filter(l => l.status === 'Pending Approval').length;
+
+  const openPayment = (lead: Lead) => {
+    setPaymentForm({
+      paymentStatus: lead.paymentStatus ?? 'Unpaid',
+      planPrice: lead.planPrice ? String(lead.planPrice) : '',
+      commissionRate: lead.commissionRate ? String(lead.commissionRate) : '15',
+      renewalDate: lead.renewalDate ?? '',
+    });
+    setPaymentErrors({});
+    setPaymentTarget(lead);
+  };
+
+  const validatePayment = (): boolean => {
+    const errs: Partial<PaymentForm> = {};
+    const price = Number(paymentForm.planPrice);
+    if (!paymentForm.planPrice || isNaN(price) || price <= 0) errs.planPrice = 'Enter a valid price';
+    const rate = Number(paymentForm.commissionRate);
+    if (!paymentForm.commissionRate || isNaN(rate) || rate < 0 || rate > 100) errs.commissionRate = '0–100%';
+    if (!paymentForm.renewalDate) errs.renewalDate = 'Required';
+    setPaymentErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const confirmPayment = () => {
+    if (!paymentTarget || !validatePayment()) return;
+    updateLeadPayment(paymentTarget.id, {
+      paymentStatus: paymentForm.paymentStatus,
+      planPrice: Number(paymentForm.planPrice),
+      commissionRate: Number(paymentForm.commissionRate),
+      renewalDate: paymentForm.renewalDate,
+    });
+    setPaymentTarget(null);
+  };
+
+  const paymentCommissionPreview =
+    paymentForm.planPrice && paymentForm.commissionRate
+      ? ((Number(paymentForm.planPrice) * Number(paymentForm.commissionRate)) / 100)
+      : null;
 
   const openApprove = (lead: Lead) => {
     setApprovalForm({
@@ -229,6 +282,7 @@ export function AdminLeads() {
                   <th className="px-4 py-3 text-left font-medium text-gray-500">Lock Ends</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500">Status</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500">Product / Plan</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-500">Payment</th>
                   <th className="px-4 py-3 text-center font-medium text-gray-500">Actions</th>
                   <th className="px-4 py-3"></th>
                 </tr>
@@ -282,6 +336,15 @@ export function AdminLeads() {
                         )}
                       </td>
                       <td className="px-4 py-3">
+                        {l.paymentStatus ? (
+                          <span className={`badge ${l.paymentStatus === 'Paid' ? 'badge-success' : 'badge-error'}`}>
+                            {l.paymentStatus}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 text-xs">Not set</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-1.5 flex-wrap">
                           <button
                             onClick={() => openApprove(l)}
@@ -291,6 +354,14 @@ export function AdminLeads() {
                           >
                             <Check className="h-3.5 w-3.5" />
                             Approve
+                          </button>
+                          <button
+                            onClick={() => openPayment(l)}
+                            className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100"
+                            title="Manage payment"
+                          >
+                            <CreditCard className="h-3.5 w-3.5" />
+                            Payment
                           </button>
                           <button
                             onClick={() => setPendingTarget(l)}
@@ -735,6 +806,161 @@ export function AdminLeads() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* ── Manage Payment Modal ─────────────────────────────────────── */}
+      <Modal
+        open={!!paymentTarget}
+        onClose={() => setPaymentTarget(null)}
+        title="Manage Payment"
+        size="lg"
+      >
+        {paymentTarget && (
+          <div className="space-y-5">
+            {/* Lead summary */}
+            <div className="rounded-xl bg-gray-50 border border-gray-200 p-4 space-y-1">
+              <p className="text-sm font-semibold text-gray-900">{paymentTarget.companyName}</p>
+              <p className="text-xs text-gray-600">Contact: {paymentTarget.contactName} · {paymentTarget.phone}</p>
+              <p className="text-xs text-gray-500">Partner: {paymentTarget.partnerName}</p>
+              {paymentTarget.productName && (
+                <p className="text-xs text-gray-500">Product: {paymentTarget.productName} · {paymentTarget.planType ?? '—'}</p>
+              )}
+            </div>
+
+            {paymentForm.paymentStatus === 'Unpaid' && (
+              <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
+                <p className="text-xs text-red-700">
+                  While marked <strong>Unpaid</strong>, partner commissions for this lead are <strong>paused</strong>. Mark as Paid to resume commission calculations.
+                </p>
+              </div>
+            )}
+
+            {paymentForm.paymentStatus === 'Paid' && (
+              <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                <p className="text-xs text-emerald-700">
+                  Marking as <strong>Paid</strong> will activate commission calculations for the partner.
+                </p>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-gray-500" />
+                Payment &amp; Commission Details
+              </h4>
+
+              {/* Payment Status toggle */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Status</label>
+                <div className="flex gap-3">
+                  {(['Paid', 'Unpaid'] as const).map(ps => (
+                    <button
+                      key={ps}
+                      type="button"
+                      onClick={() => setPaymentForm(f => ({ ...f, paymentStatus: ps }))}
+                      className={`flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all ${
+                        paymentForm.paymentStatus === ps
+                          ? ps === 'Paid'
+                            ? 'border-emerald-600 bg-emerald-50 text-emerald-700'
+                            : 'border-red-500 bg-red-50 text-red-700'
+                          : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {ps}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  Indicates whether the customer has paid for the current {paymentTarget.planType === 'Yearly' ? 'year' : 'month'}.
+                </p>
+              </div>
+
+              {/* Price & Commission side by side */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Plan Price (₹) <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="number"
+                      min={0}
+                      placeholder="e.g. 999"
+                      value={paymentForm.planPrice}
+                      onChange={e => setPaymentForm(f => ({ ...f, planPrice: e.target.value }))}
+                      className={`input-field pl-9 ${paymentErrors.planPrice ? 'border-red-400' : ''}`}
+                    />
+                  </div>
+                  {paymentErrors.planPrice && <p className="text-xs text-red-500 mt-1">{paymentErrors.planPrice}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Partner Commission % <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Percent className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={0.5}
+                      placeholder="e.g. 15"
+                      value={paymentForm.commissionRate}
+                      onChange={e => setPaymentForm(f => ({ ...f, commissionRate: e.target.value }))}
+                      className={`input-field pl-9 ${paymentErrors.commissionRate ? 'border-red-400' : ''}`}
+                    />
+                  </div>
+                  {paymentErrors.commissionRate && <p className="text-xs text-red-500 mt-1">{paymentErrors.commissionRate}</p>}
+                </div>
+              </div>
+
+              {/* Renewal Date */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Renewal {paymentTarget.planType === 'Yearly' ? 'Year' : 'Month'} <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="date"
+                    value={paymentForm.renewalDate}
+                    onChange={e => setPaymentForm(f => ({ ...f, renewalDate: e.target.value }))}
+                    className={`input-field pl-9 ${paymentErrors.renewalDate ? 'border-red-400' : ''}`}
+                  />
+                </div>
+                {paymentErrors.renewalDate && <p className="text-xs text-red-500 mt-1">{paymentErrors.renewalDate}</p>}
+                <p className="text-xs text-gray-400 mt-1">
+                  When the customer's {paymentTarget.planType === 'Yearly' ? 'yearly' : 'monthly'} subscription is up for renewal.
+                </p>
+              </div>
+
+              {/* Commission preview */}
+              {paymentCommissionPreview !== null && paymentCommissionPreview > 0 && (
+                <div className="rounded-lg bg-blue-50 border border-blue-100 px-4 py-3 flex items-center justify-between">
+                  <span className="text-sm text-blue-700 font-medium">Commission per period</span>
+                  <span className="text-lg font-display font-bold text-blue-700">
+                    ₹{paymentCommissionPreview.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => setPaymentTarget(null)} className="btn-ghost flex-1">Cancel</button>
+              <button
+                onClick={confirmPayment}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-blue-700 active:scale-[0.98] flex-1"
+              >
+                <CreditCard className="h-4 w-4" />
+                Save Payment Details
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );
