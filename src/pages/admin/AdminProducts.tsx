@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Package, Plus, CheckCircle2, Sparkles, Briefcase, BarChart3, HardHat, CreditCard, Wallet, Users, Trash2, X, DollarSign, Percent, Tag, TriangleAlert as AlertTriangle } from 'lucide-react';
+import { Package, Plus, CheckCircle2, Sparkles, Briefcase, BarChart3, HardHat, CreditCard, Wallet, Users, Trash2, X, DollarSign, Tag, TriangleAlert as AlertTriangle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader, EmptyState } from '@/components/Shared';
 import { Modal } from '@/components/Modal';
@@ -26,8 +26,8 @@ interface FormState {
   name: string;
   description: string;
   icon: string;
-  price: string;
-  commissionRate: string;
+  monthlyPrice: string;
+  yearlyPrice: string;
   commissionEligible: boolean;
   status: Product['status'];
   features: string[];
@@ -37,8 +37,8 @@ const emptyForm: FormState = {
   name: '',
   description: '',
   icon: 'Package',
-  price: '',
-  commissionRate: '15% recurring',
+  monthlyPrice: '',
+  yearlyPrice: '',
   commissionEligible: true,
   status: 'Active',
   features: [''],
@@ -57,8 +57,8 @@ export function AdminProducts() {
       name: form.name,
       description: form.description,
       icon: form.icon,
-      price: form.price,
-      commissionRate: form.commissionEligible ? form.commissionRate : 'Not eligible',
+      monthlyPrice: form.monthlyPrice ? Number(form.monthlyPrice) : null,
+      yearlyPrice: form.yearlyPrice ? Number(form.yearlyPrice) : null,
       commissionEligible: form.commissionEligible,
       status: form.status,
       features: filteredFeatures,
@@ -111,13 +111,17 @@ export function AdminProducts() {
                 </div>
                 <div className="mt-4 pt-3 border-t border-gray-50 space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-400">Price</span>
-                    <span className="font-medium text-gray-900">{p.price}</span>
+                    <span className="text-gray-400">Monthly</span>
+                    <span className="font-medium text-gray-900">{p.monthlyPrice != null ? `₹${p.monthlyPrice.toLocaleString('en-IN')}` : '—'}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-400">Yearly</span>
+                    <span className="font-medium text-gray-900">{p.yearlyPrice != null ? `₹${p.yearlyPrice.toLocaleString('en-IN')}` : '—'}</span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-gray-400">Commission</span>
                     {p.commissionEligible ? (
-                      <span className="font-medium text-zubkas-700">{p.commissionRate}</span>
+                      <span className="font-medium text-emerald-600">Eligible</span>
                     ) : (
                       <span className="text-gray-400">Not eligible</span>
                     )}
@@ -156,31 +160,33 @@ export function AdminProducts() {
             />
           </div>
 
-          {/* Price + Commission Rate */}
+          {/* Monthly Price + Yearly Price */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="text-sm font-medium text-gray-700">Price</label>
+              <label className="text-sm font-medium text-gray-700">Monthly Price (₹)</label>
               <div className="relative mt-1">
                 <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <input
-                  required
-                  value={form.price}
-                  onChange={(e) => setForm({ ...form, price: e.target.value })}
+                  type="number"
+                  min="0"
+                  value={form.monthlyPrice}
+                  onChange={(e) => setForm({ ...form, monthlyPrice: e.target.value })}
                   className="input-field pl-9"
-                  placeholder="₹499/month"
+                  placeholder="499"
                 />
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Commission Rate</label>
+              <label className="text-sm font-medium text-gray-700">Yearly Price (₹)</label>
               <div className="relative mt-1">
-                <Percent className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <input
-                  value={form.commissionRate}
-                  onChange={(e) => setForm({ ...form, commissionRate: e.target.value })}
+                  type="number"
+                  min="0"
+                  value={form.yearlyPrice}
+                  onChange={(e) => setForm({ ...form, yearlyPrice: e.target.value })}
                   className="input-field pl-9"
-                  placeholder="15% recurring"
-                  disabled={!form.commissionEligible}
+                  placeholder="4,990"
                 />
               </div>
             </div>

@@ -3,6 +3,7 @@ import { Save, RotateCcw, LayoutDashboard, LogIn, Type, BarChart3, CheckCircle2 
 import { useApp } from '@/context/AppContext';
 import { SectionHeader } from '@/components/Shared';
 import type { SiteContent } from '@/types';
+import { defaultSiteContent } from '@/data/mockData';
 
 type Tab = 'landing' | 'login';
 
@@ -59,7 +60,7 @@ export function AdminContentManager() {
 
   const handleReset = () => {
     resetSiteContent();
-    setForm({ ...siteContent });
+    setForm({ ...defaultSiteContent });
   };
 
   const handleChange = (key: keyof SiteContent, value: string) => {

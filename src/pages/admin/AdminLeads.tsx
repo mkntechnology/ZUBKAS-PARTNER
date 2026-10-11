@@ -445,7 +445,7 @@ export function AdminLeads() {
                 >
                   <option value="">— Select a product —</option>
                   {products.filter(p => p.status !== 'Coming Soon').map(p => (
-                    <option key={p.id} value={p.id}>{p.name} — {p.price}</option>
+                    <option key={p.id} value={p.id}>{p.name} — {p.monthlyPrice != null ? `₹${p.monthlyPrice.toLocaleString('en-IN')}/mo` : 'TBD'}</option>
                   ))}
                 </select>
                 {approvalErrors.productId && (
@@ -455,9 +455,10 @@ export function AdminLeads() {
                   <div className="mt-2 rounded-lg bg-zubkas-50 border border-zubkas-100 px-3 py-2 text-xs text-zubkas-700">
                     <span className="font-semibold">{selectedProduct.name}</span>
                     {selectedProduct.commissionEligible
-                      ? ` · Commission eligible (${selectedProduct.commissionRate})`
+                      ? ' · Commission eligible'
                       : ' · Not commission eligible'}
-                    {' · '}{selectedProduct.price}
+                    {selectedProduct.monthlyPrice != null && ` · ₹${selectedProduct.monthlyPrice.toLocaleString('en-IN')}/mo`}
+                    {selectedProduct.yearlyPrice != null && ` · ₹${selectedProduct.yearlyPrice.toLocaleString('en-IN')}/yr`}
                   </div>
                 )}
               </div>
@@ -759,14 +760,14 @@ export function AdminLeads() {
               >
                 <option value="">— Select a product (optional) —</option>
                 {products.filter(p => p.status !== 'Coming Soon').map(p => (
-                  <option key={p.id} value={p.id}>{p.name} — {p.price}</option>
+                  <option key={p.id} value={p.id}>{p.name} — {p.monthlyPrice != null ? `₹${p.monthlyPrice.toLocaleString('en-IN')}/mo` : 'TBD'}</option>
                 ))}
               </select>
               {createForm.productId && (() => {
                 const p = products.find(prod => prod.id === createForm.productId);
                 return p ? (
                   <div className="mt-2 rounded-lg bg-zubkas-50 p-3 text-xs text-zubkas-700">
-                    <span className="font-semibold">{p.name}</span>: {p.commissionEligible ? p.commissionRate : 'Not commission eligible'} · {p.price}
+                    <span className="font-semibold">{p.name}</span>: {p.commissionEligible ? 'Commission eligible' : 'Not commission eligible'}{p.monthlyPrice != null ? ` · ₹${p.monthlyPrice.toLocaleString('en-IN')}/mo` : ''}{p.yearlyPrice != null ? ` · ₹${p.yearlyPrice.toLocaleString('en-IN')}/yr` : ''}
                   </div>
                 ) : null;
               })()}

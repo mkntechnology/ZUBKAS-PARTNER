@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Layers, Percent, Calendar, Trash2, TriangleAlert as AlertTriangle } from 'lucide-react';
+import { Plus, Layers, Percent, Trash2, TriangleAlert as AlertTriangle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader } from '@/components/Shared';
 import { Modal } from '@/components/Modal';
@@ -8,13 +8,13 @@ import type { Plan } from '@/types';
 export function AdminPlans() {
   const { plans, addPlan, deletePlan } = useApp();
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name: '', commissionRate: '10', type: 'Monthly' as 'Monthly' | 'Yearly', description: '' });
+  const [form, setForm] = useState({ name: '', commissionRate: '10', description: '' });
   const [deleteTarget, setDeleteTarget] = useState<Plan | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    addPlan({ name: form.name, commissionRate: Number(form.commissionRate), type: form.type, description: form.description });
-    setForm({ name: '', commissionRate: '10', type: 'Monthly', description: '' });
+    addPlan({ name: form.name, commissionRate: Number(form.commissionRate), type: 'Monthly', description: form.description });
+    setForm({ name: '', commissionRate: '10', description: '' });
     setShowAdd(false);
   };
 
@@ -53,10 +53,6 @@ export function AdminPlans() {
                 <span className="text-lg font-bold text-zubkas-700">{p.commissionRate}%</span>
                 <span className="text-xs text-gray-500">commission</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <Calendar className="h-4 w-4 text-gray-400" />
-                <span className="text-sm text-gray-600">{p.type}</span>
-              </div>
             </div>
           </div>
         ))}
@@ -68,18 +64,9 @@ export function AdminPlans() {
             <label className="text-sm font-medium text-gray-700">Plan Name</label>
             <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input-field mt-1" placeholder="e.g. Enterprise Plan" />
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="text-sm font-medium text-gray-700">Commission Rate (%)</label>
-              <input required type="number" min="1" max="50" value={form.commissionRate} onChange={(e) => setForm({ ...form, commissionRate: e.target.value })} className="input-field mt-1" />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">Plan Type</label>
-              <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as 'Monthly' | 'Yearly' })} className="input-field mt-1">
-                <option>Monthly</option>
-                <option>Yearly</option>
-              </select>
-            </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700">Commission Rate (%)</label>
+            <input required type="number" min="1" max="50" value={form.commissionRate} onChange={(e) => setForm({ ...form, commissionRate: e.target.value })} className="input-field mt-1" />
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700">Description</label>

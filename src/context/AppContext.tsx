@@ -1,4 +1,4 @@
-import { createContext, useContext, useCallback, useRef, type ReactNode } from 'react';
+import { createContext, useContext, useCallback, type ReactNode } from 'react';
 import type {
   User, Partner, Customer, Lead, Employee, Category,
   Announcement, Notification, Plan, AppSettings, Product, SiteContent,
@@ -23,6 +23,7 @@ interface PasswordUpdate {
 
 interface AppContextValue {
   currentUser: User | null;
+  partnerUsers: User[];
   login: (email: string, password: string) => boolean;
   loginOtp: (email: string) => boolean;
   logout: () => void;
@@ -48,7 +49,7 @@ interface AppContextValue {
   deleteRole: (id: string) => void;
   assignEmployeeRole: (employeeId: string, roleId: string) => void;
 
-  addPartner: (p: Omit<Partner, 'id' | 'totalCommission' | 'monthlyCommission' | 'pendingCommission' | 'activeCustomers' | 'monthlySales'>) => void;
+  addPartner: (p: Omit<Partner, 'id' | 'totalCommission' | 'monthlyCommission' | 'pendingCommission' | 'activeCustomers' | 'monthlySales'> & { password: string }) => void;
   deletePartner: (id: string) => void;
   addEmployee: (e: Omit<Employee, 'id'>) => void;
   deleteEmployee: (id: string) => void;
@@ -93,12 +94,6 @@ interface AppContextValue {
 const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const hasHardReset = useRef(false);
-  if (!hasHardReset.current) {
-    localStorage.clear();
-    hasHardReset.current = true;
-  }
-
   const [currentUser, setCurrentUser] = usePersistentState<User | null>('zubkas_currentUser', null);
   const [partners, setPartners] = usePersistentState<Partner[]>('zubkas_partners', []);
   const [customers, setCustomers] = usePersistentState<Customer[]>('zubkas_customers', []);
@@ -113,34 +108,56 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [siteContent, setSiteContent] = usePersistentState<SiteContent>('zubkas_siteContent', mock.defaultSiteContent);
   const [transactions, setTransactions] = usePersistentState<CommissionTransaction[]>('zubkas_transactions', []);
   const [userPasswords, setUserPasswords] = usePersistentState<Record<string, string>>('zubkas_userPasswords', {});
+  const [partnerUsers, setPartnerUsers] = usePersistentState<User[]>('zubkas_partnerUsers', []);
   const [roles, setRoles] = usePersistentState<Role[]>('zubkas_roles', []);
   const [chatThreads, setChatThreads] = usePersistentState<ChatThread[]>('zubkas_chatThreads', []);
   const [chatMessages, setChatMessages] = usePersistentState<ChatMessage[]>('zubkas_chatMessages', []);
 
-  const login = useCallback((email: string, _password: string) => {
-    const user = mock.users.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (user) {
-      setCurrentUser(user);
+  const login = useCallback((email: string, password: string) => {
+    const mockUser = mock.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (mockUser) {
+      const storedPassword = userPasswords[mockUser.id];
+      if (storedPassword !== undefined && storedPassword !== password) return false;
+      setCurrentUser(mockUser);
+      return true;
+    }
+    const partnerUser = partnerUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (partnerUser) {
+      const storedPassword = userPasswords[partnerUser.id];
+      if (storedPassword !== undefined && storedPassword !== password) return false;
+      setCurrentUser(partnerUser);
       return true;
     }
     return false;
-  }, [setCurrentUser]);
+  }, [setCurrentUser, userPasswords, partnerUsers]);
 
   const loginOtp = useCallback((email: string) => {
-    const user = mock.users.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (user) {
-      setCurrentUser(user);
+    const mockUser = mock.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (mockUser) {
+      setCurrentUser(mockUser);
+      return true;
+    }
+    const partnerUser = partnerUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (partnerUser) {
+      setCurrentUser(partnerUser);
       return true;
     }
     return false;
-  }, [setCurrentUser]);
+  }, [setCurrentUser, partnerUsers]);
 
   const logout = useCallback(() => setCurrentUser(null), [setCurrentUser]);
 
   const addPartner: AppContextValue['addPartner'] = useCallback((p) => {
+    const partnerId = `partner-${Date.now()}`;
     const newPartner: Partner = {
-      ...p,
-      id: `partner-${Date.now()}`,
+      name: p.name,
+      email: p.email,
+      phone: p.phone,
+      company: p.company,
+      category: p.category,
+      status: p.status,
+      joinedDate: p.joinedDate,
+      id: partnerId,
       totalCommission: 0,
       monthlyCommission: 0,
       pendingCommission: 0,
@@ -148,7 +165,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       monthlySales: 0,
     };
     setPartners(prev => [...prev, newPartner]);
-  }, [setPartners]);
+
+    const newUser: User = {
+      id: `user-${Date.now()}`,
+      email: p.email,
+      name: p.name,
+      role: 'partner',
+      partnerId,
+      phone: p.phone,
+      company: p.company,
+      joinedDate: p.joinedDate,
+    };
+    setPartnerUsers(prev => [...prev, newUser]);
+    setUserPasswords(prev => ({ ...prev, [newUser.id]: p.password }));
+  }, [setPartners, setPartnerUsers, setUserPasswords]);
 
   const deletePartner: AppContextValue['deletePartner'] = useCallback((id: string) => {
     setPartners(prev => prev.filter(p => p.id !== id));
@@ -156,7 +186,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLeads(prev => prev.filter(l => l.partnerId !== id));
     setTransactions(prev => prev.filter(t => t.partnerId !== id));
     setNotifications(prev => prev.filter(n => n.userId !== id));
-  }, [setPartners, setCustomers, setLeads, setTransactions, setNotifications]);
+    setPartnerUsers(prev => {
+      const removed = prev.filter(u => u.partnerId !== id);
+      return removed;
+    });
+    setUserPasswords(prev => {
+      const next = { ...prev };
+      const partnerUser = partnerUsers.find(u => u.partnerId === id);
+      if (partnerUser) delete next[partnerUser.id];
+      return next;
+    });
+  }, [setPartners, setCustomers, setLeads, setTransactions, setNotifications, setPartnerUsers, setUserPasswords, partnerUsers]);
 
   const addEmployee: AppContextValue['addEmployee'] = useCallback((e) => {
     setEmployees(prev => [...prev, { ...e, id: `emp-${Date.now()}` }]);
@@ -480,10 +520,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSiteContent(mock.defaultSiteContent);
     setTransactions([]);
     setUserPasswords({});
+    setPartnerUsers([]);
     setRoles([]);
     setChatThreads([]);
     setChatMessages([]);
-  }, [setPartners, setCustomers, setLeads, setEmployees, setCategories, setAnnouncements, setNotifications, setPlans, setProducts, setSettings, setSiteContent, setTransactions, setUserPasswords, setRoles, setChatThreads, setChatMessages]);
+  }, [setPartners, setCustomers, setLeads, setEmployees, setCategories, setAnnouncements, setNotifications, setPlans, setProducts, setSettings, setSiteContent, setTransactions, setUserPasswords, setPartnerUsers, setRoles, setChatThreads, setChatMessages]);
 
   const updateUserProfile = useCallback((updates: ProfileUpdate) => {
     setCurrentUser(prev => {
@@ -587,7 +628,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       hasPermission, getEmployeePermissions, addRole, updateRole, deleteRole, assignEmployeeRole,
       addPartner, deletePartner, addEmployee, deleteEmployee, addCategory, deleteCategory, addPlan, deletePlan, addProduct, deleteProduct, addAnnouncement, deleteAnnouncement, addLead, adminAddLead, deleteLead, updateLeadStatus, approveLead, updateLeadPayment, convertLead, addCustomer, deleteCustomer,
       markNotificationRead, markAllRead, updateSettings, updateSiteContent, resetSiteContent,
-      clearDemoData, resetAllData, updateUserProfile, updateUserPassword,
+      clearDemoData, resetAllData, updateUserProfile, updateUserPassword, partnerUsers,
       chatThreads, chatMessages, startChatThread, sendChatMessage, markThreadReadByPartner, markThreadReadBySupport, closeChatThread, reopenChatThread, totalUnreadChatBySupport,
     }}>
       {children}

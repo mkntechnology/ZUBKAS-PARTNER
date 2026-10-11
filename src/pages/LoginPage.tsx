@@ -10,7 +10,7 @@ interface LoginPageProps {
 }
 
 export function LoginPage({ onBack }: LoginPageProps) {
-  const { login, loginOtp } = useApp();
+  const { login, loginOtp, partnerUsers, siteContent: c } = useApp();
   const [mode, setMode] = useState<LoginMode>('partner');
   const [authMethod, setAuthMethod] = useState<AuthMethod>('password');
   const [email, setEmail] = useState('');
@@ -21,8 +21,9 @@ export function LoginPage({ onBack }: LoginPageProps) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const partnerEmails = ['partner@zubkas.com', 'neha@zubkas.com', 'rahul@zubkas.com', 'anita@zubkas.com', 'suresh@zubkas.com'];
+  const hardcodedPartnerEmails = ['partner@zubkas.com', 'neha@zubkas.com', 'rahul@zubkas.com', 'anita@zubkas.com', 'suresh@zubkas.com'];
   const adminEmails = ['admin@zubkas.com', 'employee@zubkas.com', 'support@zubkas.com'];
+  const partnerEmails = [...hardcodedPartnerEmails, ...partnerUsers.map(u => u.email.toLowerCase())];
 
   const validateMode = (emailToCheck: string): boolean => {
     const lower = emailToCheck.toLowerCase();
@@ -122,17 +123,17 @@ export function LoginPage({ onBack }: LoginPageProps) {
         <div className="relative z-10 my-12 lg:my-0">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-1.5 text-sm font-medium text-white backdrop-blur-sm">
             <Sparkles className="h-3.5 w-3.5 text-amber-300" />
-            Authorized Partner Portal
+            {c.loginBadge}
           </div>
           <h1 className="mt-6 font-display text-3xl font-bold leading-tight text-white sm:text-4xl lg:text-5xl">
-            Earn recurring commissions
+            {c.loginHeroTitle1}
             <br />
             <span className="bg-gradient-to-r from-amber-200 to-amber-400 bg-clip-text text-transparent">
-              for up to 12 months
+              {c.loginHeroTitle2}
             </span>
           </h1>
           <p className="mt-4 max-w-md text-zubkas-100 leading-relaxed">
-            Refer customers to Zubkas products and earn 5-15% commission every month. Track your performance, manage leads, and grow your earnings.
+            {c.loginHeroSubtitle}
           </p>
 
           {/* Feature list */}
@@ -200,10 +201,10 @@ export function LoginPage({ onBack }: LoginPageProps) {
             </div>
 
             <h2 className="font-display text-2xl font-bold text-gray-900">
-              {mode === 'partner' ? 'Partner Login' : 'Admin / Employee Login'}
+              {mode === 'partner' ? c.loginPartnerTitle : c.loginAdminTitle}
             </h2>
             <p className="mt-1 text-sm text-gray-500">
-              {mode === 'partner' ? 'Access your partner dashboard' : 'Manage partners, plans, and announcements'}
+              {mode === 'partner' ? c.loginPartnerSubtitle : c.loginAdminSubtitle}
             </p>
 
             {/* Auth method toggle */}

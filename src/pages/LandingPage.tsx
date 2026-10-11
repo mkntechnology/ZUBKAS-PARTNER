@@ -4,6 +4,7 @@ import {
   CheckCircle2, BarChart3, Target, DollarSign, Layers, Zap,
   Crown, Star, Award, Rocket, Briefcase, CreditCard, HardHat, Wallet,
 } from 'lucide-react';
+import { useApp } from '@/context/AppContext';
 
 interface LandingPageProps {
   onSignIn: () => void;
@@ -33,15 +34,16 @@ const trustBadges = [
   { icon: Shield, label: 'Lead Lock Security', sub: '3-5 day exclusivity' },
 ];
 
-const stats = [
-  { value: '500+', label: 'Active Partners' },
-  { value: '₹2.4Cr+', label: 'Commission Paid' },
-  { value: '1,200+', label: 'Customers Referred' },
-  { value: '7', label: 'Products Suite' },
-];
-
 export function LandingPage({ onSignIn }: LandingPageProps) {
+  const { siteContent: c } = useApp();
   const [showProducts, setShowProducts] = useState(false);
+
+  const stats = [
+    { value: c.landingStat1Value, label: c.landingStat1Label },
+    { value: c.landingStat2Value, label: c.landingStat2Label },
+    { value: c.landingStat3Value, label: c.landingStat3Label },
+    { value: c.landingStat4Value, label: c.landingStat4Label },
+  ];
 
   return (
     <div className="min-h-screen bg-white">
@@ -98,34 +100,33 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 rounded-full border border-zubkas-200 bg-zubkas-50/80 px-4 py-1.5 text-sm font-medium text-zubkas-700 animate-fade-in">
             <Sparkles className="h-4 w-4" />
-            Zubkas Authorized Partner Program
+            {c.landingBadge}
           </div>
 
           {/* Headline */}
           <h1 className="mt-6 font-display text-4xl font-bold leading-tight text-gray-900 sm:text-5xl lg:text-6xl animate-slide-up">
-            Earn recurring commissions
+            {c.landingHeroTitle1}
             <br />
             <span className="bg-gradient-to-r from-zubkas-700 via-zubkas-600 to-zubkas-800 bg-clip-text text-transparent">
-              for up to 12 months
+              {c.landingHeroTitle2}
             </span>
             <br />
-            on every customer you refer
+            {c.landingHeroTitle3}
           </h1>
 
           {/* Subheadline */}
           <p className="mx-auto mt-6 max-w-2xl text-lg text-gray-500 leading-relaxed animate-slide-up">
-            Join the Zubkas Partner Program and earn up to 15% commission on every subscription.
-            Track leads, monitor commissions, and climb the leaderboard — all from one powerful dashboard.
+            {c.landingHeroSubtitle}
           </p>
 
           {/* CTAs */}
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row animate-slide-up">
             <button onClick={onSignIn} className="btn-primary text-base px-6 py-3">
-              Become a Partner
+              {c.landingCtaPrimary}
               <ArrowRight className="h-5 w-5" />
             </button>
             <a href="#features" className="btn-secondary text-base px-6 py-3">
-              Explore Features
+              {c.landingCtaSecondary}
             </a>
           </div>
 
@@ -164,10 +165,10 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
           <div className="text-center">
             <p className="text-sm font-semibold uppercase tracking-wider text-zubkas-700">Features</p>
             <h2 className="mt-2 font-display text-3xl font-bold text-gray-900 sm:text-4xl">
-              Everything you need to grow
+              {c.landingFeaturesHeading}
             </h2>
             <p className="mx-auto mt-3 max-w-2xl text-gray-500">
-              A complete partner management platform with commission tracking, lead protection, and real-time analytics.
+              {c.landingFeaturesSubheading}
             </p>
           </div>
 
@@ -197,11 +198,10 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
             <div>
               <p className="text-sm font-semibold uppercase tracking-wider text-zubkas-700">Real-Time Earnings</p>
               <h2 className="mt-2 font-display text-3xl font-bold text-gray-900 sm:text-4xl">
-                Watch your commissions grow
+                {c.landingEarningsHeading}
               </h2>
               <p className="mt-4 text-gray-500 leading-relaxed">
-                Every customer you refer generates commission automatically. Monthly plans earn every month for 12 months.
-                Yearly plans earn a lump-sum. Track everything in real-time with visual progress bars and monthly breakdowns.
+                {c.landingEarningsDesc}
               </p>
               <div className="mt-6 space-y-3">
                 {[
@@ -292,7 +292,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
           <div className="text-center">
             <p className="text-sm font-semibold uppercase tracking-wider text-zubkas-700">How It Works</p>
             <h2 className="mt-2 font-display text-3xl font-bold text-gray-900 sm:text-4xl">
-              Start earning in 3 simple steps
+              {c.landingHowItWorksHeading}
             </h2>
           </div>
           <div className="mt-12 grid gap-8 md:grid-cols-3">
@@ -325,13 +325,13 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
             <div className="absolute bottom-0 left-0 h-40 w-40 rounded-full bg-white/5 blur-3xl" />
             <Zap className="mx-auto h-10 w-10 text-white/80" />
             <h2 className="mt-4 font-display text-3xl font-bold text-white sm:text-4xl">
-              Ready to start earning?
+              {c.landingCtaSectionHeading}
             </h2>
             <p className="mx-auto mt-3 max-w-xl text-zubkas-100">
-              Sign in to access your partner dashboard, track commissions, and manage your referrals.
+              {c.landingCtaSectionDesc}
             </p>
             <button onClick={onSignIn} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3 text-base font-semibold text-zubkas-700 transition-all hover:bg-zubkas-50 active:scale-[0.98]">
-              Sign In to Dashboard
+              {c.landingCtaSectionButton}
               <ArrowRight className="h-5 w-5" />
             </button>
           </div>

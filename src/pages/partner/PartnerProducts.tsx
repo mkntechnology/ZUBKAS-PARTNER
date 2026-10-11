@@ -41,13 +41,17 @@ export function PartnerProducts() {
               </div>
               <div className="mt-4 pt-3 border-t border-gray-50 space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-400">Price</span>
-                  <span className="font-medium text-gray-900">{p.price}</span>
+                  <span className="text-gray-400">Monthly</span>
+                  <span className="font-medium text-gray-900">{p.monthlyPrice != null ? `₹${p.monthlyPrice.toLocaleString('en-IN')}` : '—'}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-gray-400">Yearly</span>
+                  <span className="font-medium text-gray-900">{p.yearlyPrice != null ? `₹${p.yearlyPrice.toLocaleString('en-IN')}` : '—'}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-gray-400">Commission</span>
                   {p.commissionEligible ? (
-                    <span className="font-medium text-zubkas-700">{p.commissionRate}</span>
+                    <span className="font-medium text-emerald-600">Eligible</span>
                   ) : (
                     <span className="text-gray-400">Not eligible</span>
                   )}

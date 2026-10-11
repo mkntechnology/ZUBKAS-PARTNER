@@ -138,8 +138,8 @@ export interface Product {
   icon: string;
   features: string[];
   commissionEligible: boolean;
-  commissionRate: string;
-  price: string;
+  monthlyPrice: number | null;
+  yearlyPrice: number | null;
   status: 'Active' | 'Beta' | 'Coming Soon';
   launchDate?: string;
 }

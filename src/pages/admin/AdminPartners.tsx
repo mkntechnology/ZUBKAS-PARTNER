@@ -17,7 +17,7 @@ export function AdminPartners() {
   const [deletePartnerTarget, setDeletePartnerTarget] = useState<Partner | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
-  const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', category: categories[0]?.name ?? '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', category: categories[0]?.name ?? '', password: '' });
 
   const filtered = partners.filter(p =>
     (p.name.toLowerCase().includes(search.toLowerCase()) || p.company.toLowerCase().includes(search.toLowerCase())) &&
@@ -26,8 +26,8 @@ export function AdminPartners() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    addPartner({ name: form.name, email: form.email, phone: form.phone, company: form.company, category: form.category, status: 'Active', joinedDate: new Date().toISOString().split('T')[0] });
-    setForm({ name: '', email: '', phone: '', company: '', category: categories[0]?.name ?? '' });
+    addPartner({ name: form.name, email: form.email, phone: form.phone, company: form.company, category: form.category, status: 'Active', joinedDate: new Date().toISOString().split('T')[0], password: form.password });
+    setForm({ name: '', email: '', phone: '', company: '', category: categories[0]?.name ?? '', password: '' });
     setShowAdd(false);
   };
 
@@ -135,6 +135,11 @@ export function AdminPartners() {
             <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="input-field mt-1">
               {categories.map(c => <option key={c.id}>{c.name}</option>)}
             </select>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700">Password</label>
+            <input required type="password" minLength={6} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="input-field mt-1" placeholder="Min 6 characters" />
+            <p className="mt-1 text-xs text-gray-400">The partner will use this password to log in. They can change it later.</p>
           </div>
           <div className="rounded-lg bg-zubkas-50 p-3 text-xs text-zubkas-700">
             Partners cannot self-register. Only admins and employees can create partner accounts.
