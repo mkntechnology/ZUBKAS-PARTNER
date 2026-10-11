@@ -15,7 +15,7 @@ interface SidebarProps {
   onClose: () => void;
   userName: string;
   userRole: string;
-  variant: 'admin' | 'partner';
+  variant: 'admin' | 'employee' | 'partner';
 }
 
 export function Sidebar({ items, active, onNavigate, open, onClose, userName, userRole, variant }: SidebarProps) {
@@ -48,7 +48,7 @@ export function Sidebar({ items, active, onNavigate, open, onClose, userName, us
         {/* Nav items */}
         <nav className="flex-1 overflow-y-auto px-3 py-4">
           <p className={`px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider ${accentText}`}>
-            {variant === 'admin' ? 'Admin Panel' : 'Partner Portal'}
+            {variant === 'admin' ? 'Admin Panel' : variant === 'employee' ? 'Employee Panel' : 'Partner Portal'}
           </p>
           <div className="space-y-1">
             {items.map(item => {

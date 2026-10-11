@@ -113,7 +113,7 @@ function AdminPortal() {
       onNavigate={setPage}
       userName={currentUser?.name ?? ''}
       userRole={currentUser?.role === 'admin' ? 'Administrator' : currentUser?.employeeRole ?? 'Employee'}
-      variant="admin"
+      variant={currentUser?.role === 'employee' ? 'employee' : 'admin'}
       sidebarOpen={sidebarOpen}
       onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
       onCloseSidebar={() => setSidebarOpen(false)}

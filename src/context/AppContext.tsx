@@ -97,21 +97,21 @@ const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = usePersistentState<User | null>('zubkas_currentUser', null);
-  const [partners, setPartners] = usePersistentState<Partner[]>('zubkas_partners', []);
-  const [customers, setCustomers] = usePersistentState<Customer[]>('zubkas_customers', []);
-  const [leads, setLeads] = usePersistentState<Lead[]>('zubkas_leads', []);
-  const [employees, setEmployees] = usePersistentState<Employee[]>('zubkas_employees', []);
-  const [categories, setCategories] = usePersistentState<Category[]>('zubkas_categories', []);
-  const [announcements, setAnnouncements] = usePersistentState<Announcement[]>('zubkas_announcements', []);
-  const [notifications, setNotifications] = usePersistentState<Notification[]>('zubkas_notifications', []);
-  const [plans, setPlans] = usePersistentState<Plan[]>('zubkas_plans', []);
+  const [partners, setPartners] = usePersistentState<Partner[]>('zubkas_partners', mock.partners);
+  const [customers, setCustomers] = usePersistentState<Customer[]>('zubkas_customers', mock.customers);
+  const [leads, setLeads] = usePersistentState<Lead[]>('zubkas_leads', mock.leads);
+  const [employees, setEmployees] = usePersistentState<Employee[]>('zubkas_employees', mock.employees);
+  const [categories, setCategories] = usePersistentState<Category[]>('zubkas_categories', mock.categories);
+  const [announcements, setAnnouncements] = usePersistentState<Announcement[]>('zubkas_announcements', mock.announcements);
+  const [notifications, setNotifications] = usePersistentState<Notification[]>('zubkas_notifications', mock.notifications);
+  const [plans, setPlans] = usePersistentState<Plan[]>('zubkas_plans', mock.plans);
   const [products, setProducts] = usePersistentState<Product[]>('zubkas_products', mock.products);
   const [settings, setSettings] = usePersistentState<AppSettings>('zubkas_settings', mock.appSettings);
   const [siteContent, setSiteContent] = usePersistentState<SiteContent>('zubkas_siteContent', mock.defaultSiteContent);
-  const [transactions, setTransactions] = usePersistentState<CommissionTransaction[]>('zubkas_transactions', []);
+  const [transactions, setTransactions] = usePersistentState<CommissionTransaction[]>('zubkas_transactions', mock.commissionTransactions);
   const [userPasswords, setUserPasswords] = usePersistentState<Record<string, string>>('zubkas_userPasswords', {});
   const [partnerUsers, setPartnerUsers] = usePersistentState<User[]>('zubkas_partnerUsers', []);
-  const [roles, setRoles] = usePersistentState<Role[]>('zubkas_roles', []);
+  const [roles, setRoles] = usePersistentState<Role[]>('zubkas_roles', mock.defaultRoles);
   const [chatThreads, setChatThreads] = usePersistentState<ChatThread[]>('zubkas_chatThreads', []);
   const [chatMessages, setChatMessages] = usePersistentState<ChatMessage[]>('zubkas_chatMessages', []);
 
@@ -159,8 +159,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setCurrentUser(partnerUser);
       return true;
     }
+    const employee = employees.find(e => e.email.toLowerCase() === email.toLowerCase() && e.status === 'Active');
+    if (employee) {
+      setCurrentUser({
+        id: employee.id,
+        email: employee.email,
+        name: employee.name,
+        role: 'employee',
+        employeeRole: employee.role,
+        phone: employee.phone,
+        whatsapp: employee.whatsapp,
+        joinedDate: employee.joinedDate,
+      });
+      return true;
+    }
     return false;
-  }, [setCurrentUser, partnerUsers]);
+  }, [setCurrentUser, partnerUsers, employees]);
 
   const logout = useCallback(() => setCurrentUser(null), [setCurrentUser]);
 
@@ -541,21 +555,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [setCustomers, setLeads, setTransactions, setNotifications]);
 
   const resetAllData = useCallback(() => {
-    setPartners([]);
-    setCustomers([]);
-    setLeads([]);
-    setEmployees([]);
-    setCategories([]);
-    setAnnouncements([]);
-    setNotifications([]);
-    setPlans([]);
+    setPartners(mock.partners);
+    setCustomers(mock.customers);
+    setLeads(mock.leads);
+    setEmployees(mock.employees);
+    setCategories(mock.categories);
+    setAnnouncements(mock.announcements);
+    setNotifications(mock.notifications);
+    setPlans(mock.plans);
     setProducts(mock.products);
     setSettings(mock.appSettings);
     setSiteContent(mock.defaultSiteContent);
-    setTransactions([]);
+    setTransactions(mock.commissionTransactions);
     setUserPasswords({});
     setPartnerUsers([]);
-    setRoles([]);
+    setRoles(mock.defaultRoles);
     setChatThreads([]);
     setChatMessages([]);
   }, [setPartners, setCustomers, setLeads, setEmployees, setCategories, setAnnouncements, setNotifications, setPlans, setProducts, setSettings, setSiteContent, setTransactions, setUserPasswords, setPartnerUsers, setRoles, setChatThreads, setChatMessages]);

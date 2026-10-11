@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Mail, Lock, ArrowRight, Shield, User, KeyRound, Sparkles, Eye, EyeOff, ArrowLeft, CircleCheck as CheckCircle2, TrendingUp, Users, DollarSign, Crown } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Shield, User, KeyRound, Sparkles, Eye, EyeOff, ArrowLeft, CircleCheck as CheckCircle2, TrendingUp, Users, DollarSign, Crown, Download } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import { usePWAInstall } from '@/utils/usePWAInstall';
 
 type LoginMode = 'partner' | 'admin';
 type AuthMethod = 'password' | 'otp';
@@ -11,6 +12,7 @@ interface LoginPageProps {
 
 export function LoginPage({ onBack }: LoginPageProps) {
   const { login, loginOtp, partnerUsers, siteContent: c } = useApp();
+  const { canInstall, isInstalled, promptInstall } = usePWAInstall();
   const [mode, setMode] = useState<LoginMode>('partner');
   const [authMethod, setAuthMethod] = useState<AuthMethod>('password');
   const [email, setEmail] = useState('');
@@ -331,6 +333,23 @@ export function LoginPage({ onBack }: LoginPageProps) {
             )}
 
           </div>
+
+          {/* PWA Install button */}
+          {canInstall && !isInstalled && (
+            <button
+              onClick={promptInstall}
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-zubkas-200 bg-zubkas-50 py-3 text-sm font-semibold text-zubkas-700 transition-all hover:bg-zubkas-100 hover:border-zubkas-300"
+            >
+              <Download className="h-4 w-4" />
+              Install Zubkas App
+            </button>
+          )}
+          {isInstalled && (
+            <div className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-emerald-50 py-3 text-sm font-medium text-emerald-700">
+              <CheckCircle2 className="h-4 w-4" />
+              App installed
+            </div>
+          )}
         </div>
 
         {/* Footer */}

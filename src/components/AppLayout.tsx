@@ -10,7 +10,7 @@ interface AppLayoutProps {
   onNavigate: (page: string) => void;
   userName: string;
   userRole: string;
-  variant: 'admin' | 'partner';
+  variant: 'admin' | 'employee' | 'partner';
   children: ReactNode;
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
