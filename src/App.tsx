@@ -13,6 +13,7 @@ import { AdminEmployees } from '@/pages/admin/AdminEmployees';
 import { AdminCategories } from '@/pages/admin/AdminCategories';
 import { AdminPlans } from '@/pages/admin/AdminPlans';
 import { AdminLeads } from '@/pages/admin/AdminLeads';
+import { AdminCustomers } from '@/pages/admin/AdminCustomers';
 import { AdminAnnouncements } from '@/pages/admin/AdminAnnouncements';
 import { AdminProducts } from '@/pages/admin/AdminProducts';
 import { AdminLeaderboard } from '@/pages/admin/AdminLeaderboard';
@@ -36,6 +37,7 @@ const adminNavItems = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { key: 'partners', label: 'Partners', icon: Users },
   { key: 'leads', label: 'Leads', icon: Target },
+  { key: 'customers', label: 'Customers', icon: Users },
   { key: 'employees', label: 'Employees', icon: UserIcon },
   { key: 'categories', label: 'Categories', icon: FolderTree },
   { key: 'plans', label: 'Plans & Rates', icon: Layers },
@@ -89,6 +91,7 @@ function AdminPortal() {
       case 'dashboard': return <AdminDashboard />;
       case 'partners': return <AdminPartners />;
       case 'leads': return <AdminLeads />;
+      case 'customers': return <AdminCustomers />;
       case 'employees': return <AdminEmployees />;
       case 'categories': return <AdminCategories />;
       case 'plans': return <AdminPlans />;

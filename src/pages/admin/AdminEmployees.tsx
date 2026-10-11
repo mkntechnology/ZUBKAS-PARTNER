@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UserPlus, Shield, Search, Trash2, TriangleAlert as AlertTriangle, ChevronDown, Check } from 'lucide-react';
+import { UserPlus, Shield, Search, Trash2, Pencil, TriangleAlert as AlertTriangle, ChevronDown, Check } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader, EmptyState } from '@/components/Shared';
 import { Modal } from '@/components/Modal';
@@ -7,11 +7,13 @@ import { formatDate, getInitials } from '@/utils/helpers';
 import type { Employee } from '@/types';
 
 export function AdminEmployees() {
-  const { employees, roles, addEmployee, deleteEmployee, assignEmployeeRole } = useApp();
+  const { employees, roles, addEmployee, updateEmployee, deleteEmployee, assignEmployeeRole } = useApp();
   const [showAdd, setShowAdd] = useState(false);
   const [search, setSearch] = useState('');
   const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', whatsapp: '', roleId: roles[0]?.id ?? '' });
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
+  const [editTarget, setEditTarget] = useState<Employee | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', whatsapp: '', status: 'Active' as Employee['status'] });
   const [roleMenuFor, setRoleMenuFor] = useState<string | null>(null);
 
   const filtered = employees.filter(e =>
@@ -54,6 +56,13 @@ export function AdminEmployees() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => { setEditTarget(e); setEditForm({ name: e.name, email: e.email, phone: e.phone ?? '', whatsapp: e.whatsapp ?? '', status: e.status }); }}
+                    className="rounded-lg p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                    title="Edit employee"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
                   <button
                     onClick={() => setDeleteTarget(e)}
                     className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
@@ -148,6 +157,44 @@ export function AdminEmployees() {
           </div>
           <button type="submit" className="btn-primary w-full">Add Employee</button>
         </form>
+      </Modal>
+
+      {/* Edit Employee Modal */}
+      <Modal open={!!editTarget} onClose={() => setEditTarget(null)} title="Edit Employee">
+        {editTarget && (
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            updateEmployee(editTarget.id, { name: editForm.name, email: editForm.email, phone: editForm.phone, whatsapp: editForm.whatsapp, status: editForm.status });
+            setEditTarget(null);
+          }} className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700">Full Name</label>
+              <input required value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="input-field mt-1" />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Email</label>
+              <input required type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} className="input-field mt-1" />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="text-sm font-medium text-gray-700">Phone</label>
+                <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} className="input-field mt-1" placeholder="Phone number" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">WhatsApp</label>
+                <input value={editForm.whatsapp} onChange={(e) => setEditForm({ ...editForm, whatsapp: e.target.value })} className="input-field mt-1" placeholder="WhatsApp number" />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Status</label>
+              <select value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value as Employee['status'] })} className="input-field mt-1">
+                <option>Active</option>
+                <option>Inactive</option>
+              </select>
+            </div>
+            <button type="submit" className="btn-primary w-full">Save Changes</button>
+          </form>
+        )}
       </Modal>
 
       {/* Delete Confirmation Modal */}

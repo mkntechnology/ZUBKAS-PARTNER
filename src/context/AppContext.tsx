@@ -50,8 +50,10 @@ interface AppContextValue {
   assignEmployeeRole: (employeeId: string, roleId: string) => void;
 
   addPartner: (p: Omit<Partner, 'id' | 'totalCommission' | 'monthlyCommission' | 'pendingCommission' | 'activeCustomers' | 'monthlySales'> & { password: string }) => void;
+  updatePartner: (id: string, updates: Partial<Omit<Partner, 'id'>>) => void;
   deletePartner: (id: string) => void;
   addEmployee: (e: Omit<Employee, 'id'> & { password: string }) => void;
+  updateEmployee: (id: string, updates: Partial<Omit<Employee, 'id'>>) => void;
   deleteEmployee: (id: string) => void;
   addCategory: (c: Omit<Category, 'id' | 'partnerCount'>) => void;
   deleteCategory: (id: string) => void;
@@ -195,6 +197,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setUserPasswords(prev => ({ ...prev, [newUser.id]: p.password }));
   }, [setPartners, setPartnerUsers, setUserPasswords]);
 
+  const updatePartner: AppContextValue['updatePartner'] = useCallback((id, updates) => {
+    setPartners(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+    setPartnerUsers(prev => prev.map(u => u.partnerId === id ? { ...u, name: updates.name ?? u.name, email: updates.email ?? u.email, phone: updates.phone ?? u.phone, company: updates.company ?? u.company } : u));
+  }, [setPartners, setPartnerUsers]);
+
   const deletePartner: AppContextValue['deletePartner'] = useCallback((id: string) => {
     setPartners(prev => prev.filter(p => p.id !== id));
     setCustomers(prev => prev.filter(c => c.partnerId !== id));
@@ -251,6 +258,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!employee) return false;
     return getEmployeePermissions(employee.roleId).includes(section);
   }, [currentUser, employees, getEmployeePermissions]);
+
+  const updateEmployee: AppContextValue['updateEmployee'] = useCallback((id, updates) => {
+    setEmployees(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+  }, [setEmployees]);
 
   const deleteEmployee: AppContextValue['deleteEmployee'] = useCallback((id) => {
     setEmployees(prev => prev.filter(e => e.id !== id));
@@ -649,7 +660,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       currentUser, login, loginOtp, logout,
       partners, customers, leads, employees, categories, announcements, notifications, plans, products, settings, siteContent, transactions, roles,
       hasPermission, getEmployeePermissions, addRole, updateRole, deleteRole, assignEmployeeRole,
-      addPartner, deletePartner, addEmployee, deleteEmployee, addCategory, deleteCategory, addPlan, deletePlan, addProduct, deleteProduct, addAnnouncement, deleteAnnouncement, addLead, adminAddLead, deleteLead, updateLeadStatus, approveLead, updateLeadPayment, convertLead, addCustomer, deleteCustomer,
+      addPartner, updatePartner, deletePartner, addEmployee, updateEmployee, deleteEmployee, addCategory, deleteCategory, addPlan, deletePlan, addProduct, deleteProduct, addAnnouncement, deleteAnnouncement, addLead, adminAddLead, deleteLead, updateLeadStatus, approveLead, updateLeadPayment, convertLead, addCustomer, deleteCustomer,
       markNotificationRead, markAllRead, updateSettings, updateSiteContent, resetSiteContent,
       clearDemoData, resetAllData, updateUserProfile, updateUserPassword, partnerUsers,
       chatThreads, chatMessages, startChatThread, sendChatMessage, markThreadReadByPartner, markThreadReadBySupport, closeChatThread, reopenChatThread, totalUnreadChatBySupport,

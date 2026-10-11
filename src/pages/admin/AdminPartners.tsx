@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UserPlus, Search, Crown, Star, Award, Rocket, Trash2, Eye, TriangleAlert as AlertTriangle } from 'lucide-react';
+import { UserPlus, Search, Crown, Star, Award, Rocket, Trash2, Eye, Pencil, TriangleAlert as AlertTriangle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader, EmptyState } from '@/components/Shared';
 import { Modal } from '@/components/Modal';
@@ -9,13 +9,15 @@ import type { Partner } from '@/types';
 const badgeIcons: Record<string, typeof Crown> = { 'Top Performer': Crown, 'Rising Star': Star, 'Consistent Earner': Award, 'New Champion': Rocket };
 
 export function AdminPartners() {
-  const { partners, customers, leads, transactions, categories, addPartner, deletePartner } = useApp();
+  const { partners, customers, leads, transactions, categories, addPartner, updatePartner, deletePartner } = useApp();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [showAdd, setShowAdd] = useState(false);
   const [viewPartner, setViewPartner] = useState<Partner | null>(null);
+  const [editPartner, setEditPartner] = useState<Partner | null>(null);
   const [deletePartnerTarget, setDeletePartnerTarget] = useState<Partner | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', company: '', category: '', status: 'Active' as Partner['status'] });
 
   const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', category: categories[0]?.name ?? '', password: '' });
 
@@ -96,6 +98,9 @@ export function AdminPartners() {
                         <button onClick={() => setViewPartner(p)} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-zubkas-700 transition-colors" title="View details">
                           <Eye className="h-4 w-4" />
                         </button>
+                        <button onClick={() => { setEditPartner(p); setEditForm({ name: p.name, email: p.email, phone: p.phone, company: p.company, category: p.category, status: p.status }); }} className="rounded-lg p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors" title="Edit partner">
+                          <Pencil className="h-4 w-4" />
+                        </button>
                         <button onClick={() => { setDeletePartnerTarget(p); setDeleteConfirmText(''); }} className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors" title="Delete partner">
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -146,6 +151,53 @@ export function AdminPartners() {
           </div>
           <button type="submit" className="btn-primary w-full">Create Partner Account</button>
         </form>
+      </Modal>
+
+      {/* Edit Partner Modal */}
+      <Modal open={!!editPartner} onClose={() => setEditPartner(null)} title="Edit Partner">
+        {editPartner && (
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            updatePartner(editPartner.id, { name: editForm.name, email: editForm.email, phone: editForm.phone, company: editForm.company, category: editForm.category, status: editForm.status });
+            setEditPartner(null);
+          }} className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700">Partner Name</label>
+              <input required value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="input-field mt-1" />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="text-sm font-medium text-gray-700">Email</label>
+                <input required type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} className="input-field mt-1" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Phone</label>
+                <input required value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} className="input-field mt-1" />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Company Name</label>
+              <input required value={editForm.company} onChange={(e) => setEditForm({ ...editForm, company: e.target.value })} className="input-field mt-1" />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="text-sm font-medium text-gray-700">Category</label>
+                <select value={editForm.category} onChange={(e) => setEditForm({ ...editForm, category: e.target.value })} className="input-field mt-1">
+                  {categories.map(c => <option key={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Status</label>
+                <select value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value as Partner['status'] })} className="input-field mt-1">
+                  <option>Active</option>
+                  <option>Suspended</option>
+                  <option>Pending</option>
+                </select>
+              </div>
+            </div>
+            <button type="submit" className="btn-primary w-full">Save Changes</button>
+          </form>
+        )}
       </Modal>
 
       {/* View Partner Modal */}
