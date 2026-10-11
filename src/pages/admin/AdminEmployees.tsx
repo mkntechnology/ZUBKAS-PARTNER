@@ -10,7 +10,7 @@ export function AdminEmployees() {
   const { employees, roles, addEmployee, deleteEmployee, assignEmployeeRole } = useApp();
   const [showAdd, setShowAdd] = useState(false);
   const [search, setSearch] = useState('');
-  const [form, setForm] = useState({ name: '', email: '', roleId: roles[0]?.id ?? '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', whatsapp: '', roleId: roles[0]?.id ?? '' });
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
   const [roleMenuFor, setRoleMenuFor] = useState<string | null>(null);
 
@@ -21,8 +21,8 @@ export function AdminEmployees() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const role = roles.find(r => r.id === form.roleId);
-    addEmployee({ name: form.name, email: form.email, role: role?.name ?? 'Employee', roleId: form.roleId, status: 'Active', joinedDate: new Date().toISOString().split('T')[0] });
-    setForm({ name: '', email: '', roleId: roles[0]?.id ?? '' });
+    addEmployee({ name: form.name, email: form.email, password: form.password, phone: form.phone, whatsapp: form.whatsapp, role: role?.name ?? 'Employee', roleId: form.roleId, status: 'Active', joinedDate: new Date().toISOString().split('T')[0] });
+    setForm({ name: '', email: '', password: '', phone: '', whatsapp: '', roleId: roles[0]?.id ?? '' });
     setShowAdd(false);
   };
 
@@ -124,6 +124,20 @@ export function AdminEmployees() {
           <div>
             <label className="text-sm font-medium text-gray-700">Email</label>
             <input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-field mt-1" placeholder="employee@zubkas.com" />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700">Password</label>
+            <input required minLength={6} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="input-field mt-1" placeholder="At least 6 characters" />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="text-sm font-medium text-gray-700">Phone</label>
+              <input required type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="input-field mt-1" placeholder="Phone number" />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">WhatsApp</label>
+              <input required type="tel" value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} className="input-field mt-1" placeholder="WhatsApp number" />
+            </div>
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700">Role / Access Level</label>

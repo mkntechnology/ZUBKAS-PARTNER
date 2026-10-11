@@ -109,9 +109,11 @@ export function LoginPage({ onBack }: LoginPageProps) {
             Back
           </button>
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 text-white font-display font-bold text-lg backdrop-blur-sm">
-              Z
-            </div>
+            <img
+              src="/assets/icons/zubkas_icon_hd_white.png"
+              alt="Zubkas"
+              className="h-9 w-9 object-contain"
+            />
             <div>
               <p className="font-display text-base font-bold text-white leading-tight">Zubkas</p>
               <p className="text-[10px] text-zubkas-200 leading-tight">Partner Program</p>

@@ -51,7 +51,7 @@ interface AppContextValue {
 
   addPartner: (p: Omit<Partner, 'id' | 'totalCommission' | 'monthlyCommission' | 'pendingCommission' | 'activeCustomers' | 'monthlySales'> & { password: string }) => void;
   deletePartner: (id: string) => void;
-  addEmployee: (e: Omit<Employee, 'id'>) => void;
+  addEmployee: (e: Omit<Employee, 'id'> & { password: string }) => void;
   deleteEmployee: (id: string) => void;
   addCategory: (c: Omit<Category, 'id' | 'partnerCount'>) => void;
   deleteCategory: (id: string) => void;
@@ -103,7 +103,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [announcements, setAnnouncements] = usePersistentState<Announcement[]>('zubkas_announcements', []);
   const [notifications, setNotifications] = usePersistentState<Notification[]>('zubkas_notifications', []);
   const [plans, setPlans] = usePersistentState<Plan[]>('zubkas_plans', []);
-  const [products, setProducts] = usePersistentState<Product[]>('zubkas_products', []);
+  const [products, setProducts] = usePersistentState<Product[]>('zubkas_products', mock.products);
   const [settings, setSettings] = usePersistentState<AppSettings>('zubkas_settings', mock.appSettings);
   const [siteContent, setSiteContent] = usePersistentState<SiteContent>('zubkas_siteContent', mock.defaultSiteContent);
   const [transactions, setTransactions] = usePersistentState<CommissionTransaction[]>('zubkas_transactions', []);
@@ -128,8 +128,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setCurrentUser(partnerUser);
       return true;
     }
+    const employee = employees.find(e => e.email.toLowerCase() === email.toLowerCase() && e.status === 'Active');
+    if (employee) {
+      if (userPasswords[employee.id] !== password) return false;
+      setCurrentUser({
+        id: employee.id,
+        email: employee.email,
+        name: employee.name,
+        role: 'employee',
+        employeeRole: employee.role,
+        phone: employee.phone,
+        whatsapp: employee.whatsapp,
+        joinedDate: employee.joinedDate,
+      });
+      return true;
+    }
     return false;
-  }, [setCurrentUser, userPasswords, partnerUsers]);
+  }, [setCurrentUser, userPasswords, partnerUsers, employees]);
 
   const loginOtp = useCallback((email: string) => {
     const mockUser = mock.users.find(u => u.email.toLowerCase() === email.toLowerCase());
@@ -199,8 +214,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [setPartners, setCustomers, setLeads, setTransactions, setNotifications, setPartnerUsers, setUserPasswords, partnerUsers]);
 
   const addEmployee: AppContextValue['addEmployee'] = useCallback((e) => {
-    setEmployees(prev => [...prev, { ...e, id: `emp-${Date.now()}` }]);
-  }, [setEmployees]);
+    const employeeId = `emp-${Date.now()}`;
+    const { password, ...employee } = e;
+    setEmployees(prev => [...prev, { ...employee, id: employeeId }]);
+    setUserPasswords(prev => ({ ...prev, [employeeId]: password }));
+  }, [setEmployees, setUserPasswords]);
 
   const assignEmployeeRole = useCallback((employeeId: string, roleId: string) => {
     const role = roles.find(r => r.id === roleId);
@@ -236,7 +254,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const deleteEmployee: AppContextValue['deleteEmployee'] = useCallback((id) => {
     setEmployees(prev => prev.filter(e => e.id !== id));
-  }, [setEmployees]);
+    setUserPasswords(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }, [setEmployees, setUserPasswords]);
 
   const addCategory: AppContextValue['addCategory'] = useCallback((c) => {
     setCategories(prev => [...prev, { ...c, id: `cat-${Date.now()}`, partnerCount: 0 }]);
@@ -515,7 +538,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setAnnouncements([]);
     setNotifications([]);
     setPlans([]);
-    setProducts([]);
+    setProducts(mock.products);
     setSettings(mock.appSettings);
     setSiteContent(mock.defaultSiteContent);
     setTransactions([]);

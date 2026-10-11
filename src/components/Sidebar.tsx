@@ -30,9 +30,11 @@ export function Sidebar({ items, active, onNavigate, open, onClose, userName, us
         {/* Logo */}
         <div className="flex h-16 items-center justify-between border-b border-gray-100 px-5">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zubkas-700 text-white font-display font-bold text-lg shadow-md">
-              Z
-            </div>
+            <img
+              src="/assets/icons/zubkas_icon_hd_new.png"
+              alt="Zubkas"
+              className="h-9 w-9 object-contain"
+            />
             <div>
               <p className="font-display text-base font-bold text-gray-900 leading-tight">Zubkas</p>
               <p className="text-[10px] text-gray-400 leading-tight">Partner Program</p>

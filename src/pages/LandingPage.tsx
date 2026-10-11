@@ -1,9 +1,5 @@
 import { useState } from 'react';
-import {
-  ArrowRight, Shield, Lock, TrendingUp, Users, Sparkles,
-  CheckCircle2, BarChart3, Target, DollarSign, Layers, Zap,
-  Crown, Star, Award, Rocket, Briefcase, CreditCard, HardHat, Wallet,
-} from 'lucide-react';
+import { ArrowRight, Shield, Lock, TrendingUp, Users, Sparkles, CircleCheck as CheckCircle2, ChartBar as BarChart3, Target, DollarSign, Layers, Zap, Crown, Star, Award, Rocket, Briefcase, CreditCard, HardHat, Wallet, Package } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 
 interface LandingPageProps {
@@ -19,14 +15,9 @@ const features = [
   { icon: Crown, title: 'Leaderboard & Badges', desc: 'Compete with fellow partners and earn badges: Top Performer, Rising Star, Consistent Earner, New Champion.' },
 ];
 
-const products = [
-  { icon: Briefcase, name: 'Zubkas Workspace', desc: 'Team collaboration & productivity' },
-  { icon: BarChart3, name: 'Zubkas Storepulse', desc: 'Retail analytics & inventory' },
-  { icon: HardHat, name: 'Zubkas Construction Mgmt', desc: 'Project & resource management' },
-  { icon: CreditCard, name: 'Zubkas POS', desc: 'Point-of-sale & multi-store' },
-  { icon: Wallet, name: 'Zubkas Payroll', desc: 'Automated payroll & compliance' },
-  { icon: Users, name: 'Zubkas CRM', desc: 'Lead scoring & pipeline tracking' },
-];
+const landingIconMap: Record<string, typeof Package> = {
+  Briefcase, BarChart3, HardHat, CreditCard, Wallet, Users, Sparkles, Package,
+};
 
 const trustBadges = [
   { icon: TrendingUp, label: '15% Recurring Commission', sub: 'On Premium plans' },
@@ -35,8 +26,16 @@ const trustBadges = [
 ];
 
 export function LandingPage({ onSignIn }: LandingPageProps) {
-  const { siteContent: c } = useApp();
+  const { siteContent: c, products: ctxProducts } = useApp();
   const [showProducts, setShowProducts] = useState(false);
+
+  const landingProducts = ctxProducts
+    .filter(p => p.showOnLanding)
+    .map(p => ({
+      icon: landingIconMap[p.icon] ?? Package,
+      name: p.name,
+      desc: p.description,
+    }));
 
   const stats = [
     { value: c.landingStat1Value, label: c.landingStat1Label },
@@ -51,9 +50,11 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-gray-100/80 bg-white/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3.5">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-zubkas-700 text-white font-display font-bold text-lg shadow-lg shadow-zubkas-700/20">
-              Z
-            </div>
+            <img
+              src="/assets/icons/zubkas_icon_hd_new.png"
+              alt="Zubkas"
+              className="h-9 w-9 object-contain"
+            />
             <div>
               <p className="font-display text-base font-bold text-gray-900 leading-tight">Zubkas</p>
               <p className="text-[10px] text-gray-400 leading-tight">Partner Program</p>
@@ -72,7 +73,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
         {showProducts && (
           <div className="border-t border-gray-100 bg-white shadow-lg animate-slide-up">
             <div className="mx-auto grid max-w-7xl gap-4 px-6 py-6 sm:grid-cols-2 lg:grid-cols-3">
-              {products.map(p => (
+              {landingProducts.map(p => (
                 <div key={p.name} className="flex items-start gap-3 rounded-xl p-3 hover:bg-gray-50 transition-colors">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zubkas-50">
                     <p.icon className="h-5 w-5 text-zubkas-700" />
@@ -343,9 +344,11 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
         <div className="mx-auto max-w-7xl">
           <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zubkas-700 text-white font-display font-bold text-sm">
-                Z
-              </div>
+              <img
+                src="/assets/icons/zubkas_icon_hd_new.png"
+                alt="Zubkas"
+                className="h-8 w-8 object-contain"
+              />
               <div>
                 <p className="font-display text-sm font-bold text-gray-900">Zubkas Partner Program</p>
                 <p className="text-[10px] text-gray-400">Affiliate & Partner Management</p>

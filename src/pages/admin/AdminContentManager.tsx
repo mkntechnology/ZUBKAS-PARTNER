@@ -1,9 +1,11 @@
-import { useState } from 'react';
-import { Save, RotateCcw, LayoutDashboard, LogIn, Type, BarChart3, CheckCircle2 } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Save, RotateCcw, LayoutDashboard, LogIn, Type, ChartBar as BarChart3, CircleCheck as CheckCircle2 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader } from '@/components/Shared';
 import type { SiteContent } from '@/types';
 import { defaultSiteContent } from '@/data/mockData';
+
+const CONTENT_KEY = 'zubkas_siteContent';
 
 type Tab = 'landing' | 'login';
 
@@ -50,22 +52,40 @@ export function AdminContentManager() {
   const [form, setForm] = useState<SiteContent>(siteContent);
   const [saved, setSaved] = useState(false);
 
+  // Sync local form whenever context siteContent changes (e.g. after reset or external update)
+  useEffect(() => {
+    setForm(siteContent);
+  }, [siteContent]);
+
   const fields = tab === 'landing' ? landingFields : loginFields;
 
-  const handleSave = () => {
+  // Direct localStorage write + context update so Landing/Login pages refresh instantly
+  const handleSave = useCallback(() => {
+    try {
+      localStorage.setItem(CONTENT_KEY, JSON.stringify(form));
+    } catch {
+      // ignore write errors
+    }
     updateSiteContent(form);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
-  };
+  }, [form, updateSiteContent]);
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
+    try {
+      localStorage.setItem(CONTENT_KEY, JSON.stringify(defaultSiteContent));
+    } catch {
+      // ignore write errors
+    }
     resetSiteContent();
     setForm({ ...defaultSiteContent });
-  };
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  }, [resetSiteContent]);
 
-  const handleChange = (key: keyof SiteContent, value: string) => {
+  const handleChange = useCallback((key: keyof SiteContent, value: string) => {
     setForm(prev => ({ ...prev, [key]: value }));
-  };
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -148,16 +168,6 @@ export function AdminContentManager() {
               )}
             </div>
           ))}
-        </div>
-        <div className="mt-6 flex gap-3">
-          <button onClick={handleSave} className="btn-primary flex-1">
-            <Save className="h-4 w-4" />
-            Save Changes
-          </button>
-          <button onClick={handleReset} className="btn-secondary">
-            <RotateCcw className="h-4 w-4" />
-            Reset to Defaults
-          </button>
         </div>
       </div>
     </div>

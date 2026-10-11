@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Package, Plus, CheckCircle2, Sparkles, Briefcase, BarChart3, HardHat, CreditCard, Wallet, Users, Trash2, X, DollarSign, Tag, TriangleAlert as AlertTriangle } from 'lucide-react';
+import { Package, Plus, CircleCheck as CheckCircle2, Sparkles, Briefcase, ChartBar as BarChart3, HardHat, CreditCard, Wallet, Users, Trash2, X, DollarSign, Tag, TriangleAlert as AlertTriangle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader, EmptyState } from '@/components/Shared';
 import { Modal } from '@/components/Modal';
@@ -29,6 +29,7 @@ interface FormState {
   monthlyPrice: string;
   yearlyPrice: string;
   commissionEligible: boolean;
+  showOnLanding: boolean;
   status: Product['status'];
   features: string[];
 }
@@ -40,6 +41,7 @@ const emptyForm: FormState = {
   monthlyPrice: '',
   yearlyPrice: '',
   commissionEligible: true,
+  showOnLanding: false,
   status: 'Active',
   features: [''],
 };
@@ -60,6 +62,7 @@ export function AdminProducts() {
       monthlyPrice: form.monthlyPrice ? Number(form.monthlyPrice) : null,
       yearlyPrice: form.yearlyPrice ? Number(form.yearlyPrice) : null,
       commissionEligible: form.commissionEligible,
+      showOnLanding: form.showOnLanding,
       status: form.status,
       features: filteredFeatures,
       launchDate: new Date().toISOString().split('T')[0],
@@ -124,6 +127,14 @@ export function AdminProducts() {
                       <span className="font-medium text-emerald-600">Eligible</span>
                     ) : (
                       <span className="text-gray-400">Not eligible</span>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-400">Landing Page</span>
+                    {p.showOnLanding ? (
+                      <span className="font-medium text-zubkas-700">Visible</span>
+                    ) : (
+                      <span className="text-gray-400">Hidden</span>
                     )}
                   </div>
                 </div>
@@ -204,6 +215,20 @@ export function AdminProducts() {
               <span className="text-sm font-medium text-gray-700">Commission eligible</span>
             </label>
             <span className="text-xs text-gray-400">Partners can earn commission on referrals</span>
+          </div>
+
+          {/* Show on Landing Page toggle */}
+          <div className="flex items-center gap-3 rounded-lg bg-gray-50 p-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.showOnLanding}
+                onChange={(e) => setForm({ ...form, showOnLanding: e.target.checked })}
+                className="h-4 w-4 rounded border-gray-300 text-zubkas-700 focus:ring-zubkas-700/20"
+              />
+              <span className="text-sm font-medium text-gray-700">Show on Landing Page</span>
+            </label>
+            <span className="text-xs text-gray-400">Display this product in the Home page Products dropdown</span>
           </div>
 
           {/* Status + Icon */}

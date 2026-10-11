@@ -107,6 +107,8 @@ export interface Employee {
   id: string;
   name: string;
   email: string;
+  phone?: string;
+  whatsapp?: string;
   role: string;
   roleId: string;
   status: 'Active' | 'Inactive';
@@ -138,6 +140,7 @@ export interface Product {
   icon: string;
   features: string[];
   commissionEligible: boolean;
+  showOnLanding: boolean;
   monthlyPrice: number | null;
   yearlyPrice: number | null;
   status: 'Active' | 'Beta' | 'Coming Soon';
