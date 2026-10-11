@@ -1,12 +1,14 @@
-import { createContext, useContext, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useCallback, useEffect, useState, useRef, type ReactNode } from 'react';
 import type {
   User, Partner, Customer, Lead, Employee, Category,
   Announcement, Notification, Plan, AppSettings, Product, SiteContent,
   CommissionTransaction, Role, AdminSectionKey,
   ChatThread, ChatMessage, LeadPaymentStatus, PlanType,
 } from '@/types';
-import * as mock from '@/data/mockData';
+import { appSettings as defaultAppSettings, defaultSiteContent, defaultRoles } from '@/data/mockData';
 import { usePersistentState } from '@/utils/usePersistentState';
+import { useSupabaseState } from '@/utils/useSupabaseState';
+import { supabase } from '@/lib/supabase';
 
 interface ProfileUpdate {
   name: string;
@@ -27,6 +29,7 @@ interface AppContextValue {
   login: (email: string, password: string) => boolean;
   loginOtp: (email: string) => boolean;
   logout: () => void;
+  dataLoaded: boolean;
 
   partners: Partner[];
   customers: Customer[];
@@ -96,43 +99,177 @@ interface AppContextValue {
 const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  // Session state stays in localStorage (it's just the current user)
   const [currentUser, setCurrentUser] = usePersistentState<User | null>('zubkas_currentUser', null);
-  const [partners, setPartners] = usePersistentState<Partner[]>('zubkas_partners', mock.partners);
-  const [customers, setCustomers] = usePersistentState<Customer[]>('zubkas_customers', mock.customers);
-  const [leads, setLeads] = usePersistentState<Lead[]>('zubkas_leads', mock.leads);
-  const [employees, setEmployees] = usePersistentState<Employee[]>('zubkas_employees', mock.employees);
-  const [categories, setCategories] = usePersistentState<Category[]>('zubkas_categories', mock.categories);
-  const [announcements, setAnnouncements] = usePersistentState<Announcement[]>('zubkas_announcements', mock.announcements);
-  const [notifications, setNotifications] = usePersistentState<Notification[]>('zubkas_notifications', mock.notifications);
-  const [plans, setPlans] = usePersistentState<Plan[]>('zubkas_plans', mock.plans);
-  const [products, setProducts] = usePersistentState<Product[]>('zubkas_products', mock.products);
-  const [settings, setSettings] = usePersistentState<AppSettings>('zubkas_settings', mock.appSettings);
-  const [siteContent, setSiteContent] = usePersistentState<SiteContent>('zubkas_siteContent', mock.defaultSiteContent);
-  const [transactions, setTransactions] = usePersistentState<CommissionTransaction[]>('zubkas_transactions', mock.commissionTransactions);
-  const [userPasswords, setUserPasswords] = usePersistentState<Record<string, string>>('zubkas_userPasswords', {});
-  const [partnerUsers, setPartnerUsers] = usePersistentState<User[]>('zubkas_partnerUsers', []);
-  const [roles, setRoles] = usePersistentState<Role[]>('zubkas_roles', mock.defaultRoles);
-  const [chatThreads, setChatThreads] = usePersistentState<ChatThread[]>('zubkas_chatThreads', []);
-  const [chatMessages, setChatMessages] = usePersistentState<ChatMessage[]>('zubkas_chatMessages', []);
+
+  // Core data lives in Supabase
+  const [partners, setPartners] = useSupabaseState<Partner[]>('partners', []);
+  const [customers, setCustomers] = useSupabaseState<Customer[]>('customers', []);
+  const [leads, setLeads] = useSupabaseState<Lead[]>('leads', []);
+  const [employees, setEmployees] = useSupabaseState<Employee[]>('employees', []);
+  const [categories, setCategories] = useSupabaseState<Category[]>('categories', []);
+  const [announcements, setAnnouncements] = useSupabaseState<Announcement[]>('announcements', []);
+  const [notifications, setNotifications] = useSupabaseState<Notification[]>('notifications', []);
+  const [plans, setPlans] = useSupabaseState<Plan[]>('plans', []);
+  const [products, setProducts] = useSupabaseState<Product[]>('products', []);
+  const [transactions, setTransactions] = useSupabaseState<CommissionTransaction[]>('commission_transactions', []);
+  const [roles, setRoles] = useSupabaseState<Role[]>('roles', defaultRoles);
+  const [chatThreads, setChatThreads] = useSupabaseState<ChatThread[]>('chat_threads', []);
+  const [chatMessages, setChatMessages] = useSupabaseState<ChatMessage[]>('chat_messages', []);
+
+  // Site content is a JSON blob singleton
+  const [siteContent, setSiteContent] = useSupabaseState<SiteContent>('site_content', defaultSiteContent, { singleton: true, singletonColumn: 'content' });
+
+  // Settings has multiple columns, so we manage it with useState + manual Supabase sync
+  const [settingsState, setSettingsState] = useState<AppSettings>(defaultAppSettings);
+  const settingsLoadedRef = useRef(false);
+
+  // App users (login system) — loaded from Supabase but kept in local state for synchronous login
+  const [appUsers, setAppUsers] = useState<User[]>([]);
+  const [userPasswords, setUserPasswords] = useState<Record<string, string>>({});
+  const [partnerUsers, setPartnerUsers] = useState<User[]>([]);
+  const [usersLoaded, setUsersLoaded] = useState(false);
+
+  // Track whether all data has loaded
+  const [dataLoaded, setDataLoaded] = useState(false);
+
+  // Load app users + settings from Supabase on mount
+  useEffect(() => {
+    (async () => {
+      // Load app users
+      try {
+        const { data, error } = await supabase.from('app_users').select('*');
+        if (!error && data) {
+          const users = data.map((row: Record<string, unknown>) => ({
+            id: row.id as string,
+            email: row.email as string,
+            name: row.name as string,
+            role: row.role as User['role'],
+            phone: (row.phone as string) ?? undefined,
+            whatsapp: (row.whatsapp as string) ?? undefined,
+            company: (row.company as string) ?? undefined,
+            partnerId: (row.partner_id as string) ?? undefined,
+            employeeRole: (row.employee_role as string) ?? undefined,
+            joinedDate: row.joined_date as string,
+          }));
+          setAppUsers(users);
+          const pwdMap: Record<string, string> = {};
+          for (const row of data as Record<string, unknown>[]) {
+            if (row.password) pwdMap[row.id as string] = row.password as string;
+          }
+          setUserPasswords(pwdMap);
+          setPartnerUsers(users.filter(u => u.role === 'partner'));
+        }
+      } catch {
+        // ignore
+      }
+
+      // Load settings
+      try {
+        const { data: sData, error: sError } = await supabase
+          .from('app_settings')
+          .select('*')
+          .eq('id', 'singleton')
+          .maybeSingle();
+        if (!sError && sData) {
+          const s = sData as Record<string, unknown>;
+          settingsLoadedRef.current = true;
+          setSettingsState({
+            leadLockDays: (s.lead_lock_days as number) ?? 3,
+            commissionCapMonths: (s.commission_cap_months as number) ?? 12,
+            defaultCurrency: (s.default_currency as string) ?? '₹',
+          });
+        }
+      } catch {
+        // ignore
+      }
+
+      setUsersLoaded(true);
+      setDataLoaded(true);
+    })();
+  }, []);
+
+  // Persist settings to Supabase when they change (skip initial load)
+  useEffect(() => {
+    if (!settingsLoadedRef.current) return;
+    settingsLoadedRef.current = true;
+    (async () => {
+      try {
+        await supabase.from('app_settings').upsert({
+          id: 'singleton',
+          lead_lock_days: settingsState.leadLockDays,
+          commission_cap_months: settingsState.commissionCapMonths,
+          default_currency: settingsState.defaultCurrency,
+          updated_at: new Date().toISOString(),
+        });
+      } catch {
+        // ignore
+      }
+    })();
+  }, [settingsState]);
+
+  // Helper to insert an app_user into Supabase
+  const insertAppUser = useCallback(async (user: User & { password?: string }) => {
+    try {
+      await supabase.from('app_users').insert({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        phone: user.phone ?? null,
+        whatsapp: user.whatsapp ?? null,
+        company: user.company ?? null,
+        partner_id: user.partnerId ?? null,
+        employee_role: user.employeeRole ?? null,
+        joined_date: user.joinedDate,
+        password: user.password ?? '',
+      });
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Helper to delete an app_user from Supabase
+  const deleteAppUser = useCallback(async (id: string) => {
+    try {
+      await supabase.from('app_users').delete().eq('id', id);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Helper to update an app_user in Supabase
+  const updateAppUserInDb = useCallback(async (id: string, updates: Record<string, unknown>) => {
+    try {
+      await supabase.from('app_users').update(updates).eq('id', id);
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const login = useCallback((email: string, password: string) => {
-    const mockUser = mock.users.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (mockUser) {
-      const storedPassword = userPasswords[mockUser.id];
-      if (storedPassword !== undefined && storedPassword !== password) return false;
-      setCurrentUser(mockUser);
+    const lowerEmail = email.toLowerCase();
+    // Check app users (admin + seeded users)
+    const dbUser = appUsers.find(u => u.email.toLowerCase() === lowerEmail);
+    if (dbUser) {
+      const storedPassword = userPasswords[dbUser.id];
+      if (storedPassword !== undefined && storedPassword !== '' && storedPassword !== password) return false;
+      setCurrentUser(dbUser);
       return true;
     }
-    const partnerUser = partnerUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
+    // Check partner users
+    const partnerUser = partnerUsers.find(u => u.email.toLowerCase() === lowerEmail);
     if (partnerUser) {
       const storedPassword = userPasswords[partnerUser.id];
-      if (storedPassword !== undefined && storedPassword !== password) return false;
+      if (storedPassword !== undefined && storedPassword !== '' && storedPassword !== password) return false;
       setCurrentUser(partnerUser);
       return true;
     }
-    const employee = employees.find(e => e.email.toLowerCase() === email.toLowerCase() && e.status === 'Active');
+    // Check employees
+    const employee = employees.find(e => e.email.toLowerCase() === lowerEmail && e.status === 'Active');
     if (employee) {
-      if (userPasswords[employee.id] !== password) return false;
+      const empPwd = userPasswords[employee.id];
+      if (empPwd !== undefined && empPwd !== '' && empPwd !== password) return false;
       setCurrentUser({
         id: employee.id,
         email: employee.email,
@@ -146,20 +283,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return true;
     }
     return false;
-  }, [setCurrentUser, userPasswords, partnerUsers, employees]);
+  }, [setCurrentUser, appUsers, userPasswords, partnerUsers, employees]);
 
   const loginOtp = useCallback((email: string) => {
-    const mockUser = mock.users.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (mockUser) {
-      setCurrentUser(mockUser);
+    const lowerEmail = email.toLowerCase();
+    const dbUser = appUsers.find(u => u.email.toLowerCase() === lowerEmail);
+    if (dbUser) {
+      setCurrentUser(dbUser);
       return true;
     }
-    const partnerUser = partnerUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
+    const partnerUser = partnerUsers.find(u => u.email.toLowerCase() === lowerEmail);
     if (partnerUser) {
       setCurrentUser(partnerUser);
       return true;
     }
-    const employee = employees.find(e => e.email.toLowerCase() === email.toLowerCase() && e.status === 'Active');
+    const employee = employees.find(e => e.email.toLowerCase() === lowerEmail && e.status === 'Active');
     if (employee) {
       setCurrentUser({
         id: employee.id,
@@ -174,7 +312,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return true;
     }
     return false;
-  }, [setCurrentUser, partnerUsers, employees]);
+  }, [setCurrentUser, appUsers, partnerUsers, employees]);
 
   const logout = useCallback(() => setCurrentUser(null), [setCurrentUser]);
 
@@ -208,13 +346,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
       joinedDate: p.joinedDate,
     };
     setPartnerUsers(prev => [...prev, newUser]);
+    setAppUsers(prev => [...prev, newUser]);
     setUserPasswords(prev => ({ ...prev, [newUser.id]: p.password }));
-  }, [setPartners, setPartnerUsers, setUserPasswords]);
+    insertAppUser({ ...newUser, password: p.password });
+  }, [setPartners, setPartnerUsers, setAppUsers, setUserPasswords, insertAppUser]);
 
   const updatePartner: AppContextValue['updatePartner'] = useCallback((id, updates) => {
     setPartners(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
     setPartnerUsers(prev => prev.map(u => u.partnerId === id ? { ...u, name: updates.name ?? u.name, email: updates.email ?? u.email, phone: updates.phone ?? u.phone, company: updates.company ?? u.company } : u));
-  }, [setPartners, setPartnerUsers]);
+    // Sync to app_users in Supabase
+    const partnerUser = partnerUsers.find(u => u.partnerId === id);
+    if (partnerUser) {
+      updateAppUserInDb(partnerUser.id, {
+        name: updates.name, email: updates.email, phone: updates.phone, company: updates.company,
+      });
+    }
+  }, [setPartners, setPartnerUsers, partnerUsers, updateAppUserInDb]);
 
   const deletePartner: AppContextValue['deletePartner'] = useCallback((id: string) => {
     setPartners(prev => prev.filter(p => p.id !== id));
@@ -222,24 +369,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLeads(prev => prev.filter(l => l.partnerId !== id));
     setTransactions(prev => prev.filter(t => t.partnerId !== id));
     setNotifications(prev => prev.filter(n => n.userId !== id));
-    setPartnerUsers(prev => {
-      const removed = prev.filter(u => u.partnerId !== id);
-      return removed;
-    });
+    const removedPartnerUsers = partnerUsers.filter(u => u.partnerId === id);
+    setPartnerUsers(prev => prev.filter(u => u.partnerId !== id));
+    setAppUsers(prev => prev.filter(u => u.partnerId !== id));
     setUserPasswords(prev => {
       const next = { ...prev };
-      const partnerUser = partnerUsers.find(u => u.partnerId === id);
-      if (partnerUser) delete next[partnerUser.id];
+      for (const u of removedPartnerUsers) delete next[u.id];
       return next;
     });
-  }, [setPartners, setCustomers, setLeads, setTransactions, setNotifications, setPartnerUsers, setUserPasswords, partnerUsers]);
+    for (const u of removedPartnerUsers) {
+      deleteAppUser(u.id);
+    }
+  }, [setPartners, setCustomers, setLeads, setTransactions, setNotifications, setPartnerUsers, setAppUsers, setUserPasswords, partnerUsers, deleteAppUser]);
 
   const addEmployee: AppContextValue['addEmployee'] = useCallback((e) => {
     const employeeId = `emp-${Date.now()}`;
     const { password, ...employee } = e;
     setEmployees(prev => [...prev, { ...employee, id: employeeId }]);
     setUserPasswords(prev => ({ ...prev, [employeeId]: password }));
-  }, [setEmployees, setUserPasswords]);
+    // Also create an app_user for login
+    const newUser: User = {
+      id: employeeId,
+      email: employee.email,
+      name: employee.name,
+      role: 'employee',
+      employeeRole: employee.role,
+      phone: employee.phone,
+      whatsapp: employee.whatsapp,
+      joinedDate: employee.joinedDate,
+    };
+    setAppUsers(prev => [...prev, newUser]);
+    insertAppUser({ ...newUser, password });
+  }, [setEmployees, setUserPasswords, setAppUsers, insertAppUser]);
 
   const assignEmployeeRole = useCallback((employeeId: string, roleId: string) => {
     const role = roles.find(r => r.id === roleId);
@@ -275,16 +436,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const updateEmployee: AppContextValue['updateEmployee'] = useCallback((id, updates) => {
     setEmployees(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
-  }, [setEmployees]);
+    // Sync to app_users
+    updateAppUserInDb(id, {
+      name: updates.name, email: updates.email, phone: updates.phone, whatsapp: updates.whatsapp,
+    });
+  }, [setEmployees, updateAppUserInDb]);
 
   const deleteEmployee: AppContextValue['deleteEmployee'] = useCallback((id) => {
     setEmployees(prev => prev.filter(e => e.id !== id));
+    setAppUsers(prev => prev.filter(u => u.id !== id));
     setUserPasswords(prev => {
       const next = { ...prev };
       delete next[id];
       return next;
     });
-  }, [setEmployees, setUserPasswords]);
+    deleteAppUser(id);
+  }, [setEmployees, setAppUsers, setUserPasswords, deleteAppUser]);
 
   const addCategory: AppContextValue['addCategory'] = useCallback((c) => {
     setCategories(prev => [...prev, { ...c, id: `cat-${Date.now()}`, partnerCount: 0 }]);
@@ -319,8 +486,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [setLeads]);
 
   const approveLead: AppContextValue['approveLead'] = useCallback((id, details) => {
-    const lockEnd = new Date('2026-10-08');
-    lockEnd.setDate(lockEnd.getDate() + settings.leadLockDays);
+    const today = new Date().toISOString().split('T')[0];
+    const lockEnd = new Date();
+    lockEnd.setDate(lockEnd.getDate() + settingsState.leadLockDays);
     const lockEndDate = lockEnd.toISOString().split('T')[0];
     setLeads(prev => prev.map(l =>
       l.id !== id ? l : {
@@ -340,13 +508,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         id: `n-${Date.now()}`,
         userId: lead.partnerId,
         title: 'Lead Approved',
-        message: `Your lead "${lead.companyName}" has been approved and locked for ${settings.leadLockDays} days. Convert it before the lock expires.`,
+        message: `Your lead "${lead.companyName}" has been approved and locked for ${settingsState.leadLockDays} days. Convert it before the lock expires.`,
         type: 'lead',
-        date: '2026-10-08',
+        date: today,
         read: false,
       }]);
     }
-  }, [leads, settings.leadLockDays, setLeads, setNotifications]);
+  }, [leads, settingsState.leadLockDays, setLeads, setNotifications]);
 
   const updateLeadPayment: AppContextValue['updateLeadPayment'] = useCallback((id, details) => {
     setLeads(prev => prev.map(l =>
@@ -376,7 +544,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         title: details.paymentStatus === 'Paid' ? 'Payment Confirmed' : 'Payment Marked Unpaid',
         message: `Payment for lead "${lead.companyName}" has been marked as ${details.paymentStatus} by admin.${details.paymentStatus === 'Unpaid' ? ' Commissions are paused until payment is confirmed.' : ''}`,
         type: 'payment',
-        date: '2026-10-08',
+        date: new Date().toISOString().split('T')[0],
         read: false,
       }]);
     }
@@ -385,11 +553,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const convertLead: AppContextValue['convertLead'] = useCallback((id) => {
     const lead = leads.find(l => l.id === id);
     if (!lead) return;
-    const startDate = '2026-10-08';
+    const today = new Date().toISOString().split('T')[0];
     const renewalDate = lead.renewalDate ?? (lead.planType === 'Yearly'
-      ? new Date(2027, 9, 8).toISOString().split('T')[0]
-      : new Date(2026, 10, 8).toISOString().split('T')[0]);
-    const commissionEndDate = new Date(2027, 9, 8).toISOString().split('T')[0];
+      ? new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]
+      : new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0]);
+    const commissionEndDate = new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0];
     const newCustomer: Customer = {
       id: `c-${Date.now()}`,
       partnerId: lead.partnerId,
@@ -402,7 +570,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       planTier: 'Premium',
       commissionRate: lead.commissionRate ?? 15,
       subscriptionAmount: lead.planPrice ?? 0,
-      startDate,
+      startDate: today,
       renewalDate,
       status: lead.paymentStatus === 'Paid' ? 'Active' : 'Unpaid',
       commissionEarned: 0,
@@ -419,13 +587,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       title: 'Lead Converted',
       message: `Your lead "${lead.companyName}" has been converted to a customer.`,
       type: 'lead',
-      date: '2026-10-08',
+      date: today,
       read: false,
     }]);
   }, [leads, setCustomers, setLeads, setNotifications]);
 
   const adminAddLead: AppContextValue['adminAddLead'] = useCallback((l) => {
     const partner = l.partnerId === 'none' ? null : partners.find(p => p.id === l.partnerId);
+    const today = new Date().toISOString().split('T')[0];
     const newLead: Lead = {
       id: `l-${Date.now()}`,
       partnerId: l.partnerId,
@@ -436,8 +605,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       phone: l.phone,
       whatsapp: l.whatsapp,
       status: 'Open',
-      submittedDate: '2026-10-08',
-      lockEndDate: '2026-10-08',
+      submittedDate: today,
+      lockEndDate: today,
       notes: l.notes,
       productId: l.productId,
       productName: l.productName,
@@ -451,7 +620,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         title: 'New Lead Assigned',
         message: `A new lead for "${l.companyName}" has been created by admin and assigned to you.`,
         type: 'lead',
-        date: '2026-10-08',
+        date: today,
         read: false,
       }]);
     }
@@ -459,7 +628,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addCustomer: AppContextValue['addCustomer'] = useCallback((c) => {
     const start = new Date(c.startDate);
-    const now = new Date('2026-10-08');
+    const now = new Date();
     const monthsElapsed = c.planType === 'Yearly'
       ? 1
       : Math.max(0, (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth()));
@@ -514,12 +683,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return prev;
       }
       const partner = partners.find(p => p.id === l.partnerId);
+      const today = new Date().toISOString().split('T')[0];
       const newLead: Lead = {
         ...l,
         id: `l-${Date.now()}`,
         status: 'Pending Approval',
-        submittedDate: '2026-10-08',
-        lockEndDate: '2026-10-08',
+        submittedDate: today,
+        lockEndDate: today,
         partnerName: partner?.name ?? 'Unknown',
       };
       return [...prev, newLead];
@@ -536,43 +706,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [setNotifications]);
 
   const updateSettings = useCallback((s: Partial<AppSettings>) => {
-    setSettings(prev => ({ ...prev, ...s }));
-  }, [setSettings]);
+    setSettingsState(prev => ({ ...prev, ...s }));
+  }, []);
 
   const updateSiteContent = useCallback((s: Partial<SiteContent>) => {
     setSiteContent(prev => ({ ...prev, ...s }));
   }, [setSiteContent]);
 
   const resetSiteContent = useCallback(() => {
-    setSiteContent(mock.defaultSiteContent);
+    setSiteContent(defaultSiteContent);
   }, [setSiteContent]);
 
   const clearDemoData = useCallback(() => {
     setCustomers([]);
     setLeads([]);
     setTransactions([]);
-    setNotifications(prev => prev.filter(n => n.type !== 'commission' && n.type !== 'lead' && n.type !== 'payment'));
-  }, [setCustomers, setLeads, setTransactions, setNotifications]);
+    setNotifications([]);
+    setAnnouncements([]);
+  }, [setCustomers, setLeads, setTransactions, setNotifications, setAnnouncements]);
 
   const resetAllData = useCallback(() => {
-    setPartners(mock.partners);
-    setCustomers(mock.customers);
-    setLeads(mock.leads);
-    setEmployees(mock.employees);
-    setCategories(mock.categories);
-    setAnnouncements(mock.announcements);
-    setNotifications(mock.notifications);
-    setPlans(mock.plans);
-    setProducts(mock.products);
-    setSettings(mock.appSettings);
-    setSiteContent(mock.defaultSiteContent);
-    setTransactions(mock.commissionTransactions);
-    setUserPasswords({});
-    setPartnerUsers([]);
-    setRoles(mock.defaultRoles);
+    setPartners([]);
+    setCustomers([]);
+    setLeads([]);
+    setEmployees([]);
+    setCategories([]);
+    setAnnouncements([]);
+    setNotifications([]);
+    setPlans([]);
+    setProducts([]);
+    setTransactions([]);
     setChatThreads([]);
     setChatMessages([]);
-  }, [setPartners, setCustomers, setLeads, setEmployees, setCategories, setAnnouncements, setNotifications, setPlans, setProducts, setSettings, setSiteContent, setTransactions, setUserPasswords, setPartnerUsers, setRoles, setChatThreads, setChatMessages]);
+    setSettingsState(defaultAppSettings);
+    setSiteContent(defaultSiteContent);
+  }, [setPartners, setCustomers, setLeads, setEmployees, setCategories, setAnnouncements, setNotifications, setPlans, setProducts, setTransactions, setChatThreads, setChatMessages, setSiteContent]);
 
   const updateUserProfile = useCallback((updates: ProfileUpdate) => {
     setCurrentUser(prev => {
@@ -585,12 +753,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setEmployees(prev => prev.map(e =>
       e.email === currentUser?.email ? { ...e, name: updates.name, email: updates.email } : e
     ));
-  }, [currentUser, setCurrentUser, setPartners, setEmployees]);
+    // Sync to app_users
+    if (currentUser) {
+      updateAppUserInDb(currentUser.id, {
+        name: updates.name, email: updates.email, phone: updates.phone, whatsapp: updates.whatsapp, company: updates.company,
+      });
+    }
+  }, [currentUser, setCurrentUser, setPartners, setEmployees, updateAppUserInDb]);
 
   const updateUserPassword = useCallback((updates: PasswordUpdate): { success: boolean; error?: string } => {
     if (!currentUser) return { success: false, error: 'Not logged in' };
     const storedPassword = userPasswords[currentUser.id];
-    if (storedPassword !== undefined && storedPassword !== updates.currentPassword) {
+    if (storedPassword !== undefined && storedPassword !== '' && storedPassword !== updates.currentPassword) {
       return { success: false, error: 'Current password is incorrect' };
     }
     if (updates.newPassword.length < 6) {
@@ -600,8 +774,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return { success: false, error: 'New password must be different from current password' };
     }
     setUserPasswords(prev => ({ ...prev, [currentUser.id]: updates.newPassword }));
+    updateAppUserInDb(currentUser.id, { password: updates.newPassword });
     return { success: true };
-  }, [currentUser, userPasswords, setUserPasswords]);
+  }, [currentUser, userPasswords, setUserPasswords, updateAppUserInDb]);
 
   const startChatThread = useCallback((subject: string): string => {
     if (!currentUser || !currentUser.partnerId) return '';
@@ -631,7 +806,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       id: `msg-${Date.now()}`,
       threadId,
       senderType: fromSupport ? 'support' : 'partner',
-      senderName: fromSupport ? currentUser.name : currentUser.name,
+      senderName: currentUser.name,
       text,
       timestamp: now,
       read: false,
@@ -671,8 +846,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return (
     <AppContext.Provider value={{
-      currentUser, login, loginOtp, logout,
-      partners, customers, leads, employees, categories, announcements, notifications, plans, products, settings, siteContent, transactions, roles,
+      currentUser, login, loginOtp, logout, dataLoaded: dataLoaded && usersLoaded,
+      partners, customers, leads, employees, categories, announcements, notifications, plans, products,
+      settings: settingsState, siteContent, transactions, roles,
       hasPermission, getEmployeePermissions, addRole, updateRole, deleteRole, assignEmployeeRole,
       addPartner, updatePartner, deletePartner, addEmployee, updateEmployee, deleteEmployee, addCategory, deleteCategory, addPlan, deletePlan, addProduct, deleteProduct, addAnnouncement, deleteAnnouncement, addLead, adminAddLead, deleteLead, updateLeadStatus, approveLead, updateLeadPayment, convertLead, addCustomer, deleteCustomer,
       markNotificationRead, markAllRead, updateSettings, updateSiteContent, resetSiteContent,

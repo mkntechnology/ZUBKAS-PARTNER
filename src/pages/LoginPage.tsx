@@ -112,7 +112,7 @@ export function LoginPage({ onBack }: LoginPageProps) {
           </button>
           <div className="flex items-center gap-2.5">
             <img
-              src="/assets/icons/zubkas_icon_hd_white.png"
+              src="/assets/icons/zubkas_icon_hd_white.svg"
               alt="Zubkas"
               className="h-9 w-9 object-contain"
             />
