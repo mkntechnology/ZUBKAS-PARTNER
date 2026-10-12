@@ -114,7 +114,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const transactionsHook = useSupabaseCollection<CommissionTransaction>('commission_transactions', []);
   const rolesHook = useSupabaseCollection<Role>('roles', defaultRoles);
   const chatThreadsHook = useSupabaseCollection<ChatThread>('chat_threads', []);
-  const chatMessagesHook = useSupabaseCollection<ChatMessage>('chat_messages', []);
+  const chatMessagesHook = useSupabaseCollection<ChatMessage>('chat_messages', [], 'timestamp');
 
   // Site content — singleton JSON blob
   const [siteContent, setSiteContent] = useSupabaseSingleton<SiteContent>('site_content', defaultSiteContent, 'content');

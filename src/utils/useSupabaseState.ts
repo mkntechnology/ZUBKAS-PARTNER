@@ -20,7 +20,8 @@ type Row = Record<string, unknown>;
  */
 export function useSupabaseCollection<T extends { id: string }>(
   table: string,
-  initialValue: T[]
+  initialValue: T[],
+  orderColumn: string = 'created_at'
 ): {
   state: T[];
   loaded: boolean;
@@ -41,7 +42,7 @@ export function useSupabaseCollection<T extends { id: string }>(
 
     (async () => {
       try {
-        const { data, error } = await supabase.from(table).select('*').order('created_at', { ascending: false });
+        const { data, error } = await supabase.from(table).select('*').order(orderColumn, { ascending: false });
         if (!cancelled && !error && data) {
           const camelData = (data as Row[]).map(row => toCamelRow<Row>(row)) as unknown as T[];
           setState(camelData);
@@ -80,7 +81,7 @@ export function useSupabaseCollection<T extends { id: string }>(
         channelRef.current = null;
       }
     };
-  }, [table]);
+  }, [table, orderColumn]);
 
   const insertRow = useCallback(async (row: T) => {
     const snake = toSnakeRow(row as unknown as Row);
