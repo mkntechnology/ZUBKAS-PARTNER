@@ -13,9 +13,6 @@ interface CustomerForm {
   email: string;
   whatsapp: string;
   partnerId: string;
-  planType: 'Monthly' | 'Yearly';
-  planTier: string;
-  subscriptionAmount: string;
 }
 
 const emptyForm: CustomerForm = {
@@ -25,9 +22,6 @@ const emptyForm: CustomerForm = {
   email: '',
   whatsapp: '',
   partnerId: '',
-  planType: 'Monthly',
-  planTier: 'Free',
-  subscriptionAmount: '0',
 };
 
 export function AdminCustomers() {
@@ -51,7 +45,6 @@ export function AdminCustomers() {
     e.preventDefault();
     const today = new Date('2026-10-08').toISOString().split('T')[0];
     const renewalDate = new Date(new Date('2026-10-08').setMonth(new Date('2026-10-08').getMonth() + 2)).toISOString().split('T')[0];
-    const rate = form.planTier === 'Premium' ? 15 : 5;
     addCustomer({
       partnerId: form.partnerId,
       name: form.name,
@@ -59,10 +52,10 @@ export function AdminCustomers() {
       phone: form.phone,
       email: form.email,
       whatsapp: form.whatsapp,
-      planType: form.planType,
-      planTier: form.planTier,
-      commissionRate: rate,
-      subscriptionAmount: Number(form.subscriptionAmount) || 0,
+      planType: 'Monthly',
+      planTier: 'Free',
+      commissionRate: 5,
+      subscriptionAmount: 0,
       startDate: today,
       renewalDate,
       status: 'Active',
@@ -221,35 +214,12 @@ export function AdminCustomers() {
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="text-sm font-medium text-gray-700">Assign to Partner <span className="text-red-500">*</span></label>
-              <select required value={form.partnerId} onChange={(e) => setForm({ ...form, partnerId: e.target.value })} className="input-field mt-1">
-                <option value="">Select a partner...</option>
-                {partners.map(p => <option key={p.id} value={p.id}>{p.name} — {p.company}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">Plan Type</label>
-              <select value={form.planType} onChange={(e) => setForm({ ...form, planType: e.target.value as 'Monthly' | 'Yearly' })} className="input-field mt-1">
-                <option value="Monthly">Monthly</option>
-                <option value="Yearly">Yearly</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="text-sm font-medium text-gray-700">Plan Tier</label>
-              <select value={form.planTier} onChange={(e) => setForm({ ...form, planTier: e.target.value })} className="input-field mt-1">
-                <option value="Free">Free (5% commission)</option>
-                <option value="Premium">Premium (15% commission)</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">Subscription Amount (₹)</label>
-              <input type="number" min="0" value={form.subscriptionAmount} onChange={(e) => setForm({ ...form, subscriptionAmount: e.target.value })} className="input-field mt-1" placeholder="0" />
-            </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700">Assign to Partner <span className="text-red-500">*</span></label>
+            <select required value={form.partnerId} onChange={(e) => setForm({ ...form, partnerId: e.target.value })} className="input-field mt-1">
+              <option value="">Select a partner...</option>
+              {partners.map(p => <option key={p.id} value={p.id}>{p.name} — {p.company}</option>)}
+            </select>
           </div>
 
           <button type="submit" className="btn-primary w-full"><UserPlus className="h-4 w-4" /> Add Customer</button>

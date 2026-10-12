@@ -98,7 +98,6 @@ export interface Partner {
   totalCommission: number;
   monthlyCommission: number;
   pendingCommission: number;
-  activeCustomers: number;
   monthlySales: number;
   badge?: string;
 }
@@ -119,7 +118,6 @@ export interface Category {
   id: string;
   name: string;
   description: string;
-  partnerCount: number;
 }
 
 export interface Announcement {

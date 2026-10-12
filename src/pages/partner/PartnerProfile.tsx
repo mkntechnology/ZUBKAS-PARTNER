@@ -120,7 +120,7 @@ export function PartnerProfile() {
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: 'Active Customers', value: String(partner.activeCustomers) },
+          { label: 'Active Customers', value: String(myCustomers.filter(c => c.status === 'Active').length) },
           { label: 'Monthly Sales', value: `₹${(partner.monthlySales / 1000).toFixed(1)}K` },
           { label: 'Total Commission', value: `₹${(partner.totalCommission / 1000).toFixed(1)}K` },
           { label: 'Pending Commission', value: `₹${(partner.pendingCommission / 1000).toFixed(1)}K` },

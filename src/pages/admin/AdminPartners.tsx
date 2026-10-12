@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UserPlus, Search, Crown, Star, Award, Rocket, Trash2, Eye, Pencil, TriangleAlert as AlertTriangle } from 'lucide-react';
+import { UserPlus, Search, Crown, Star, Award, Rocket, Trash2, Eye, EyeOff, Pencil, TriangleAlert as AlertTriangle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader, EmptyState } from '@/components/Shared';
 import { Modal } from '@/components/Modal';
@@ -9,7 +9,7 @@ import type { Partner } from '@/types';
 const badgeIcons: Record<string, typeof Crown> = { 'Top Performer': Crown, 'Rising Star': Star, 'Consistent Earner': Award, 'New Champion': Rocket };
 
 export function AdminPartners() {
-  const { partners, customers, leads, transactions, categories, addPartner, updatePartner, deletePartner } = useApp();
+  const { partners, customers, leads, transactions, categories, addPartner, updatePartner, deletePartner, partnerPasswords } = useApp();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [showAdd, setShowAdd] = useState(false);
@@ -20,17 +20,28 @@ export function AdminPartners() {
   const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', company: '', category: '', status: 'Active' as Partner['status'] });
 
   const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', category: categories[0]?.name ?? '', password: '' });
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [revealedPasswords, setRevealedPasswords] = useState<Set<string>>(new Set());
 
   const filtered = partners.filter(p =>
     (p.name.toLowerCase().includes(search.toLowerCase()) || p.company.toLowerCase().includes(search.toLowerCase())) &&
     (statusFilter === 'All' || p.status === statusFilter)
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    addPartner({ name: form.name, email: form.email, phone: form.phone, company: form.company, category: form.category, status: 'Active', joinedDate: new Date().toISOString().split('T')[0], password: form.password });
-    setForm({ name: '', email: '', phone: '', company: '', category: categories[0]?.name ?? '', password: '' });
-    setShowAdd(false);
+    setSubmitError(null);
+    setSubmitting(true);
+    try {
+      await addPartner({ name: form.name, email: form.email, phone: form.phone, company: form.company, category: form.category, status: 'Active', joinedDate: new Date().toISOString().split('T')[0], password: form.password });
+      setForm({ name: '', email: '', phone: '', company: '', category: categories[0]?.name ?? '', password: '' });
+      setShowAdd(false);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to create partner. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -70,6 +81,7 @@ export function AdminPartners() {
                   <th className="px-4 py-3 text-right font-medium text-gray-500">Monthly Sales</th>
                   <th className="px-4 py-3 text-right font-medium text-gray-500">Total Commission</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500">Status</th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-500">Password</th>
                   <th className="px-4 py-3 text-left font-medium text-gray-500">Joined</th>
                   <th className="px-4 py-3"></th>
                 </tr>
@@ -88,10 +100,24 @@ export function AdminPartners() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-gray-600">{p.category}</td>
-                    <td className="px-4 py-3 text-gray-600">{p.activeCustomers}</td>
+                    <td className="px-4 py-3 text-gray-600">{customers.filter(c => c.partnerId === p.id && c.status === 'Active').length}</td>
                     <td className="px-4 py-3 text-right font-medium text-gray-900">{formatCurrency(p.monthlySales)}</td>
                     <td className="px-4 py-3 text-right font-medium text-gray-900">{formatCurrency(p.totalCommission)}</td>
                     <td className="px-4 py-3"><span className={`badge ${p.status === 'Active' ? 'badge-success' : p.status === 'Suspended' ? 'badge-error' : 'badge-warning'}`}>{p.status}</span></td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono text-xs text-gray-700">
+                          {revealedPasswords.has(p.id) ? (partnerPasswords[p.id] || '—') : '••••••'}
+                        </span>
+                        <button
+                          onClick={() => setRevealedPasswords(prev => { const next = new Set(prev); next.has(p.id) ? next.delete(p.id) : next.add(p.id); return next; })}
+                          className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-zubkas-700 transition-colors"
+                          title={revealedPasswords.has(p.id) ? 'Hide password' : 'Show password'}
+                        >
+                          {revealedPasswords.has(p.id) ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                        </button>
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{formatDate(p.joinedDate)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
@@ -146,10 +172,14 @@ export function AdminPartners() {
             <input required type="password" minLength={6} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="input-field mt-1" placeholder="Min 6 characters" />
             <p className="mt-1 text-xs text-gray-400">The partner will use this password to log in. They can change it later.</p>
           </div>
-          <div className="rounded-lg bg-zubkas-50 p-3 text-xs text-zubkas-700">
-            Partners cannot self-register. Only admins and employees can create partner accounts.
-          </div>
-          <button type="submit" className="btn-primary w-full">Create Partner Account</button>
+          {submitError && (
+            <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+              {submitError}
+            </div>
+          )}
+          <button type="submit" disabled={submitting} className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed">
+            {submitting ? 'Creating...' : 'Create Partner Account'}
+          </button>
         </form>
       </Modal>
 
@@ -219,7 +249,7 @@ export function AdminPartners() {
                 { label: 'Category', value: viewPartner.category },
                 { label: 'Status', value: viewPartner.status },
                 { label: 'Joined Date', value: formatDate(viewPartner.joinedDate) },
-                { label: 'Active Customers', value: String(viewPartner.activeCustomers) },
+                { label: 'Active Customers', value: String(customers.filter(c => c.partnerId === viewPartner.id && c.status === 'Active').length) },
                 { label: 'Monthly Sales', value: formatCurrency(viewPartner.monthlySales) },
                 { label: 'Total Commission', value: formatCurrency(viewPartner.totalCommission) },
                 { label: 'Monthly Commission', value: formatCurrency(viewPartner.monthlyCommission) },

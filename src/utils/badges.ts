@@ -85,17 +85,18 @@ export function calculateLeaderboard(
   sections.push({ key: 'monthlyTop', title: 'Monthly Top Partners', subtitle: 'Highest sales this month', iconName: 'Trophy', entries: monthlyTop });
 
   const highestSales = [...partners]
-    .filter(p => p.activeCustomers > 0)
-    .sort((a, b) => b.activeCustomers - a.activeCustomers)
+    .map(p => ({ partner: p, count: customers.filter(c => c.partnerId === p.id && c.status === 'Active').length }))
+    .filter(x => x.count > 0)
+    .sort((a, b) => b.count - a.count)
     .slice(0, 10)
-    .map((p, i) => ({
-      partnerId: p.id,
-      partnerName: p.name,
-      company: p.company,
-      metric: p.activeCustomers,
-      metricLabel: `${p.activeCustomers} active customers`,
+    .map((x, i) => ({
+      partnerId: x.partner.id,
+      partnerName: x.partner.name,
+      company: x.partner.company,
+      metric: x.count,
+      metricLabel: `${x.count} active customers`,
       rank: i + 1,
-      badge: calculatePartnerBadge(p, customers, leads, transactions, partners),
+      badge: calculatePartnerBadge(x.partner, customers, leads, transactions, partners),
     }));
   sections.push({ key: 'highestSales', title: 'Most Active Customers', subtitle: 'Partners with most active customers', iconName: 'TrendingUp', entries: highestSales });
 

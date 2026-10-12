@@ -86,7 +86,7 @@ export function PartnerDashboard() {
 
       {/* Core metrics */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Active Customers" value={String(partner.activeCustomers)} icon={Users} trend={`${myCustomers.length} total`} accent="zubkas" />
+        <StatCard label="Active Customers" value={String(myCustomers.filter(c => c.status === 'Active').length)} icon={Users} trend={`${myCustomers.length} total`} accent="zubkas" />
         <StatCard label="Monthly Sales" value={formatCurrency(partner.monthlySales)} icon={TrendingUp} trend="+12.5% vs last month" trendUp accent="blue" />
         <StatCard label="Monthly Commission" value={formatCurrency(partner.monthlyCommission)} icon={DollarSign} trend="This month's earnings" trendUp accent="emerald" />
         <StatCard label="Pending Commission" value={formatCurrency(partner.pendingCommission)} icon={Clock} trend={unpaidCustomers.length > 0 ? `${unpaidCustomers.length} unpaid customer${unpaidCustomers.length > 1 ? 's' : ''}` : 'All clear'} accent="amber" />

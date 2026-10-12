@@ -6,11 +6,11 @@ import { formatCurrency, formatDate, getInitials } from '@/utils/helpers';
 const badgeIcons: Record<string, typeof Crown> = { 'Top Performer': Crown, 'Rising Star': Star, 'Consistent Earner': Award, 'New Champion': Rocket };
 
 export function AdminDashboard() {
-  const { partners, leads, announcements } = useApp();
+  const { partners, leads, announcements, customers } = useApp();
 
   const totalCommission = partners.reduce((s, p) => s + p.totalCommission, 0);
   const totalMonthlySales = partners.reduce((s, p) => s + p.monthlySales, 0);
-  const totalCustomers = partners.reduce((s, p) => s + p.activeCustomers, 0);
+  const totalCustomers = customers.filter(c => c.status === 'Active').length;
   const topPerformers = [...partners].sort((a, b) => b.monthlySales - a.monthlySales).slice(0, 4);
 
   const recentPartners = [...partners].sort((a, b) => new Date(b.joinedDate).getTime() - new Date(a.joinedDate).getTime()).slice(0, 5);

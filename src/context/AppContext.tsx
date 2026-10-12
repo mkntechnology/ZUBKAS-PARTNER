@@ -26,6 +26,7 @@ interface PasswordUpdate {
 interface AppContextValue {
   currentUser: User | null;
   partnerUsers: User[];
+  partnerPasswords: Record<string, string>;
   login: (email: string, password: string) => Promise<boolean>;
   loginOtp: (email: string) => boolean;
   logout: () => void;
@@ -52,13 +53,13 @@ interface AppContextValue {
   deleteRole: (id: string) => void;
   assignEmployeeRole: (employeeId: string, roleId: string) => void;
 
-  addPartner: (p: Omit<Partner, 'id' | 'totalCommission' | 'monthlyCommission' | 'pendingCommission' | 'activeCustomers' | 'monthlySales'> & { password: string }) => void;
+  addPartner: (p: Omit<Partner, 'id' | 'totalCommission' | 'monthlyCommission' | 'pendingCommission' | 'monthlySales'> & { password: string }) => Promise<void>;
   updatePartner: (id: string, updates: Partial<Omit<Partner, 'id'>>) => void;
   deletePartner: (id: string) => void;
   addEmployee: (e: Omit<Employee, 'id'> & { password: string }) => void;
   updateEmployee: (id: string, updates: Partial<Omit<Employee, 'id'>>) => void;
   deleteEmployee: (id: string) => void;
-  addCategory: (c: Omit<Category, 'id' | 'partnerCount'>) => void;
+  addCategory: (c: Omit<Category, 'id'>) => Promise<void>;
   deleteCategory: (id: string) => void;
   addPlan: (p: Omit<Plan, 'id'>) => void;
   deletePlan: (id: string) => void;
@@ -241,23 +242,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const insertAppUser = useCallback(async (user: User & { password?: string }) => {
-    try {
-      await supabase.from('app_users').insert({
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        phone: user.phone ?? null,
-        whatsapp: user.whatsapp ?? null,
-        company: user.company ?? null,
-        partner_id: user.partnerId ?? null,
-        employee_role: user.employeeRole ?? null,
-        joined_date: user.joinedDate,
-        password: user.password ?? '',
-      });
-    } catch {
-      // ignore
-    }
+    const { error } = await supabase.from('app_users').insert({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      phone: user.phone ?? null,
+      whatsapp: user.whatsapp ?? null,
+      company: user.company ?? null,
+      partner_id: user.partnerId ?? null,
+      employee_role: user.employeeRole ?? null,
+      joined_date: user.joinedDate,
+      password: user.password ?? '',
+    });
+    if (error) console.error('Failed to insert app_user:', error.message);
   }, []);
 
   const deleteAppUser = useCallback(async (id: string) => {
@@ -435,26 +433,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => setCurrentUser(null), [setCurrentUser]);
 
   // ===== PARTNERS =====
-  const addPartner: AppContextValue['addPartner'] = useCallback((p) => {
-    const partnerId = `partner-${Date.now()}`;
+  const addPartner: AppContextValue['addPartner'] = useCallback(async (p) => {
     const newPartner: Partner = {
+      id: '',
       name: p.name, email: p.email, phone: p.phone, company: p.company,
       category: p.category, status: p.status, joinedDate: p.joinedDate,
-      id: partnerId,
       totalCommission: 0, monthlyCommission: 0, pendingCommission: 0,
-      activeCustomers: 0, monthlySales: 0,
+      monthlySales: 0,
     };
-    partnersHook.insertRow(newPartner);
+    const insertedPartner = await partnersHook.insertRow(newPartner);
 
     const newUser: User = {
       id: `user-${Date.now()}`,
       email: p.email, name: p.name, role: 'partner',
-      partnerId, phone: p.phone, company: p.company, joinedDate: p.joinedDate,
+      partnerId: insertedPartner.id, phone: p.phone, company: p.company, joinedDate: p.joinedDate,
     };
     setPartnerUsers(prev => [...prev, newUser]);
     setAppUsers(prev => [...prev, newUser]);
     setUserPasswords(prev => ({ ...prev, [newUser.id]: p.password }));
-    insertAppUser({ ...newUser, password: p.password });
+    await insertAppUser({ ...newUser, password: p.password });
   }, [partnersHook, setPartnerUsers, setAppUsers, setUserPasswords, insertAppUser]);
 
   const updatePartner: AppContextValue['updatePartner'] = useCallback((id, updates) => {
@@ -551,8 +548,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [employeesHook, setAppUsers, setUserPasswords, deleteAppUser]);
 
   // ===== CATEGORIES =====
-  const addCategory: AppContextValue['addCategory'] = useCallback((c) => {
-    categoriesHook.insertRow({ ...c, id: `cat-${Date.now()}`, partnerCount: 0 });
+  const addCategory: AppContextValue['addCategory'] = useCallback(async (c) => {
+    await categoriesHook.insertRow({ ...c, id: '' });
   }, [categoriesHook]);
 
   const deleteCategory: AppContextValue['deleteCategory'] = useCallback((id) => {
@@ -716,7 +713,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const remainingMonths = c.planType === 'Yearly' ? 0 : Math.max(0, 12 - monthsElapsed);
     const commissionEndDate = new Date(start.getFullYear() + 1, start.getMonth(), start.getDate()).toISOString().split('T')[0];
     const newCustomer: Customer = {
-      ...c, id: `c-${Date.now()}`,
+      ...c, id: '',
       commissionEarned: 0, commissionEndDate, monthsElapsed, remainingMonths,
     };
     customersHook.insertRow(newCustomer);
@@ -904,6 +901,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addPartner, updatePartner, deletePartner, addEmployee, updateEmployee, deleteEmployee, addCategory, deleteCategory, addPlan, deletePlan, addProduct, deleteProduct, addAnnouncement, deleteAnnouncement, addLead, adminAddLead, deleteLead, updateLeadStatus, approveLead, updateLeadPayment, convertLead, addCustomer, deleteCustomer,
       markNotificationRead, markAllRead, updateSettings, updateSiteContent, resetSiteContent,
       clearDemoData, resetAllData, updateUserProfile, updateUserPassword, partnerUsers,
+      partnerPasswords: Object.fromEntries(partnerUsers.map(u => [u.partnerId ?? '', userPasswords[u.id] ?? ''])),
       chatThreads, chatMessages, startChatThread, sendChatMessage, markThreadReadByPartner, markThreadReadBySupport, closeChatThread, reopenChatThread, totalUnreadChatBySupport,
     }}>
       {children}

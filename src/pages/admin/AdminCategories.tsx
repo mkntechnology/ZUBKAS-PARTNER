@@ -9,13 +9,23 @@ export function AdminCategories() {
   const { categories, addCategory, deleteCategory } = useApp();
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ name: '', description: '' });
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    addCategory({ name: form.name, description: form.description });
-    setForm({ name: '', description: '' });
-    setShowAdd(false);
+    setSubmitError(null);
+    setSubmitting(true);
+    try {
+      await addCategory({ name: form.name, description: form.description });
+      setForm({ name: '', description: '' });
+      setShowAdd(false);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to create category. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -37,7 +47,6 @@ export function AdminCategories() {
                   <Tag className="h-5 w-5 text-zubkas-700" />
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="badge badge-zubkas">{c.partnerCount} partners</span>
                   <button onClick={() => setDeleteTarget(c)} className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors" title="Delete category">
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -60,7 +69,14 @@ export function AdminCategories() {
             <label className="text-sm font-medium text-gray-700">Description</label>
             <textarea required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="input-field mt-1 min-h-20" placeholder="Brief description of this category" />
           </div>
-          <button type="submit" className="btn-primary w-full">Add Category</button>
+          {submitError && (
+            <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+              {submitError}
+            </div>
+          )}
+          <button type="submit" disabled={submitting} className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed">
+            {submitting ? 'Adding...' : 'Add Category'}
+          </button>
         </form>
       </Modal>
 

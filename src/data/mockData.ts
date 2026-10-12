@@ -50,11 +50,11 @@ export const users: User[] = [
 ];
 
 export const partners: Partner[] = [
-  { id: 'partner-1', name: 'Vikram Singh', email: 'partner@zubkas.com', phone: '+91 90000 11111', company: 'TechReach Solutions', status: 'Active', joinedDate: '2024-02-10', category: 'Technology', totalCommission: 285000, monthlyCommission: 42000, pendingCommission: 8500, activeCustomers: 28, monthlySales: 840000, badge: 'Top Performer' },
-  { id: 'partner-2', name: 'Neha Gupta', email: 'neha@zubkas.com', phone: '+91 90000 22222', company: 'GrowthLink Digital', status: 'Active', joinedDate: '2024-04-05', category: 'Digital Marketing', totalCommission: 192000, monthlyCommission: 31000, pendingCommission: 0, activeCustomers: 19, monthlySales: 620000, badge: 'Rising Star' },
-  { id: 'partner-3', name: 'Rahul Verma', email: 'rahul@zubkas.com', phone: '+91 90000 33333', company: 'BizConnect India', status: 'Active', joinedDate: '2024-06-18', category: 'Business Services', totalCommission: 156000, monthlyCommission: 26500, pendingCommission: 12000, activeCustomers: 15, monthlySales: 530000, badge: 'Consistent Earner' },
-  { id: 'partner-4', name: 'Anita Desai', email: 'anita@zubkas.com', phone: '+91 90000 44444', company: 'CloudFirst Consulting', status: 'Active', joinedDate: '2025-01-12', category: 'Cloud Services', totalCommission: 48000, monthlyCommission: 18500, pendingCommission: 3000, activeCustomers: 8, monthlySales: 370000, badge: 'New Champion' },
-  { id: 'partner-5', name: 'Suresh Patel', email: 'suresh@zubkas.com', phone: '+91 90000 55555', company: 'RetailBoost Partners', status: 'Active', joinedDate: '2025-03-22', category: 'Retail', totalCommission: 22000, monthlyCommission: 12000, pendingCommission: 5000, activeCustomers: 6, monthlySales: 240000 },
+  { id: 'partner-1', name: 'Vikram Singh', email: 'partner@zubkas.com', phone: '+91 90000 11111', company: 'TechReach Solutions', status: 'Active', joinedDate: '2024-02-10', category: 'Technology', totalCommission: 285000, monthlyCommission: 42000, pendingCommission: 8500, monthlySales: 840000, badge: 'Top Performer' },
+  { id: 'partner-2', name: 'Neha Gupta', email: 'neha@zubkas.com', phone: '+91 90000 22222', company: 'GrowthLink Digital', status: 'Active', joinedDate: '2024-04-05', category: 'Digital Marketing', totalCommission: 192000, monthlyCommission: 31000, pendingCommission: 0, monthlySales: 620000, badge: 'Rising Star' },
+  { id: 'partner-3', name: 'Rahul Verma', email: 'rahul@zubkas.com', phone: '+91 90000 33333', company: 'BizConnect India', status: 'Active', joinedDate: '2024-06-18', category: 'Business Services', totalCommission: 156000, monthlyCommission: 26500, pendingCommission: 12000, monthlySales: 530000, badge: 'Consistent Earner' },
+  { id: 'partner-4', name: 'Anita Desai', email: 'anita@zubkas.com', phone: '+91 90000 44444', company: 'CloudFirst Consulting', status: 'Active', joinedDate: '2025-01-12', category: 'Cloud Services', totalCommission: 48000, monthlyCommission: 18500, pendingCommission: 3000, monthlySales: 370000, badge: 'New Champion' },
+  { id: 'partner-5', name: 'Suresh Patel', email: 'suresh@zubkas.com', phone: '+91 90000 55555', company: 'RetailBoost Partners', status: 'Active', joinedDate: '2025-03-22', category: 'Retail', totalCommission: 22000, monthlyCommission: 12000, pendingCommission: 5000, monthlySales: 240000 },
 ];
 
 function calcRemaining(startDate: string, planType: 'Monthly' | 'Yearly'): { monthsElapsed: number; remainingMonths: number; commissionEndDate: string } {
@@ -118,11 +118,11 @@ export const employees: Employee[] = [
 ];
 
 export const categories: Category[] = [
-  { id: 'cat-1', name: 'Technology', description: 'Software, IT services, and tech consulting partners', partnerCount: 12 },
-  { id: 'cat-2', name: 'Digital Marketing', description: 'Marketing agencies and digital growth partners', partnerCount: 8 },
-  { id: 'cat-3', name: 'Business Services', description: 'General business consulting and B2B services', partnerCount: 15 },
-  { id: 'cat-4', name: 'Cloud Services', description: 'Cloud infrastructure and migration specialists', partnerCount: 6 },
-  { id: 'cat-5', name: 'Retail', description: 'Retail chains and e-commerce partners', partnerCount: 10 },
+  { id: 'cat-1', name: 'Technology', description: 'Software, IT services, and tech consulting partners' },
+  { id: 'cat-2', name: 'Digital Marketing', description: 'Marketing agencies and digital growth partners' },
+  { id: 'cat-3', name: 'Business Services', description: 'General business consulting and B2B services' },
+  { id: 'cat-4', name: 'Cloud Services', description: 'Cloud infrastructure and migration specialists' },
+  { id: 'cat-5', name: 'Retail', description: 'Retail chains and e-commerce partners' },
 ];
 
 export const announcements: Announcement[] = [

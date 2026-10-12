@@ -25,7 +25,7 @@ export function useSupabaseCollection<T extends { id: string }>(
 ): {
   state: T[];
   loaded: boolean;
-  insertRow: (row: T) => Promise<void>;
+  insertRow: (row: T) => Promise<T>;
   updateRow: (id: string, updates: Partial<T>) => Promise<void>;
   deleteRow: (id: string) => Promise<void>;
   upsertRow: (row: T) => Promise<void>;
@@ -85,12 +85,19 @@ export function useSupabaseCollection<T extends { id: string }>(
 
   const insertRow = useCallback(async (row: T) => {
     const snake = toSnakeRow(row as unknown as Row);
-    await supabase.from(table).insert(snake);
-    // Realtime will add the row to state, but add optimistically
+    // Omit empty/falsy id so the database can auto-generate it (e.g. UUID default)
+    if (!snake.id) delete snake.id;
+    const { data, error } = await supabase.from(table).insert(snake).select();
+    if (error) throw new Error(error.message);
+    // Use the actual inserted row (with DB-generated id) for the state update
+    const inserted = data && data.length > 0
+      ? toCamelRow<Row>(data[0] as Row) as unknown as T
+      : row;
     setState(prev => {
-      if (prev.some(r => r.id === row.id)) return prev;
-      return [row, ...prev];
+      if (prev.some(r => r.id === inserted.id)) return prev;
+      return [inserted, ...prev];
     });
+    return inserted;
   }, [table]);
 
   const updateRow = useCallback(async (id: string, updates: Partial<T>) => {
