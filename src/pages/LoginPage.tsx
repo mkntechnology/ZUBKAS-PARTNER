@@ -24,7 +24,7 @@ export function LoginPage({ onBack }: LoginPageProps) {
   const [loading, setLoading] = useState(false);
 
   const hardcodedPartnerEmails = ['partner@zubkas.com', 'neha@zubkas.com', 'rahul@zubkas.com', 'anita@zubkas.com', 'suresh@zubkas.com'];
-  const adminEmails = ['admin@zubkas.com', 'employee@zubkas.com', 'support@zubkas.com'];
+  const adminEmails = ['admin@zubkas.com', 'employee@zubkas.com', 'support@zubkas.com', 'zubkastechnology@gmail.com'];
   const partnerEmails = [...hardcodedPartnerEmails, ...partnerUsers.map(u => u.email.toLowerCase())];
 
   const validateMode = (emailToCheck: string): boolean => {
@@ -40,16 +40,18 @@ export function LoginPage({ onBack }: LoginPageProps) {
     return true;
   };
 
-  const handlePasswordLogin = (e: React.FormEvent) => {
+  const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (!validateMode(email)) return;
     setLoading(true);
-    setTimeout(() => {
-      const success = login(email, password);
+    try {
+      const success = await login(email, password);
       if (!success) setError('Invalid email or password. Please check your credentials and try again.');
-      setLoading(false);
-    }, 500);
+    } catch {
+      setError('Something went wrong. Please try again.');
+    }
+    setLoading(false);
   };
 
   const handleSendOtp = (e: React.FormEvent) => {

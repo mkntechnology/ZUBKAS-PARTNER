@@ -26,7 +26,7 @@ interface PasswordUpdate {
 interface AppContextValue {
   currentUser: User | null;
   partnerUsers: User[];
-  login: (email: string, password: string) => boolean;
+  login: (email: string, password: string) => Promise<boolean>;
   loginOtp: (email: string) => boolean;
   logout: () => void;
   dataLoaded: boolean;
@@ -298,26 +298,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
     chatThreadsHook.loaded, chatMessagesHook.loaded,
   ].every(Boolean);
 
-  const login = useCallback((email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     const lowerEmail = email.toLowerCase();
+
     const dbUser = appUsers.find(u => u.email.toLowerCase() === lowerEmail);
     if (dbUser) {
       const storedPassword = userPasswords[dbUser.id];
-      if (storedPassword !== undefined && storedPassword !== '' && storedPassword !== password) return false;
+      if (storedPassword === undefined || storedPassword === '' || storedPassword !== password) return false;
       setCurrentUser(dbUser);
       return true;
     }
+
     const partnerUser = partnerUsers.find(u => u.email.toLowerCase() === lowerEmail);
     if (partnerUser) {
       const storedPassword = userPasswords[partnerUser.id];
-      if (storedPassword !== undefined && storedPassword !== '' && storedPassword !== password) return false;
+      if (storedPassword === undefined || storedPassword === '' || storedPassword !== password) return false;
       setCurrentUser(partnerUser);
       return true;
     }
+
     const employee = employees.find(e => e.email.toLowerCase() === lowerEmail && e.status === 'Active');
     if (employee) {
       const empPwd = userPasswords[employee.id];
-      if (empPwd !== undefined && empPwd !== '' && empPwd !== password) return false;
+      if (empPwd === undefined || empPwd === '' || empPwd !== password) return false;
       setCurrentUser({
         id: employee.id,
         email: employee.email,
@@ -330,7 +333,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
       return true;
     }
-    return false;
+
+    try {
+      const { data, error } = await supabase
+        .from('app_users')
+        select('id, email, name, role, phone, whatsapp, company, partner_id, employee_role, joined_date, password')
+        .ilike('email', lowerEmail)
+        .limit(1)
+        .maybeSingle();
+      if (error || !data) return false;
+      const storedPassword = (data as Record<string, unknown>).password as string | undefined;
+      if (storedPassword === undefined || storedPassword === '' || storedPassword !== password) return false;
+      const user: User = {
+        id: data.id as string,
+        email: data.email as string,
+        name: data.name as string,
+        role: data.role as User['role'],
+        phone: (data.phone as string) ?? undefined,
+        whatsapp: (data.whatsapp as string) ?? undefined,
+        company: (data.company as string) ?? undefined,
+        partnerId: (data.partner_id as string) ?? undefined,
+        employeeRole: (data.employee_role as string) ?? undefined,
+        joinedDate: data.joined_date as string,
+      };
+      setCurrentUser(user);
+      return true;
+    } catch {
+      return false;
+    }
   }, [setCurrentUser, appUsers, userPasswords, partnerUsers, employees]);
 
   const loginOtp = useCallback((email: string) => {
