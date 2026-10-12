@@ -9,7 +9,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['assets/icons/zubkas_icon_hd_new.png'],
+      includeAssets: ['assets/icons/zubkas-logo.png', 'assets/icons/zubkas-logo-white.png'],
       manifest: {
         name: 'Zubkas Partner Program',
         short_name: 'Zubkas',
@@ -22,13 +22,13 @@ export default defineConfig({
         scope: '/',
         icons: [
           {
-            src: '/assets/icons/zubkas_icon_hd_new.png',
+            src: '/assets/icons/zubkas-logo.png',
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any maskable',
           },
           {
-            src: '/assets/icons/zubkas_icon_hd_new.png',
+            src: '/assets/icons/zubkas-logo.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable',

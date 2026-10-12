@@ -2,67 +2,192 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toSnakeRow, toCamelRow } from '@/utils/caseConvert';
 
+type Row = Record<string, unknown>;
+
 /**
- * A React hook that mirrors useState but persists data to a Supabase table.
- * Loads initial data on mount, then syncs every update back to Supabase.
- * The setter works identically to useState (value or updater function).
+ * A React hook that provides true per-row CRUD operations against a Supabase
+ * table, with realtime subscriptions so changes from any client are reflected
+ * live in local state.
  *
- * Automatically converts between camelCase (app types) and snake_case (DB columns).
+ * - `insertRow(row)` — inserts one row (camelCase keys auto-converted)
+ * - `updateRow(id, updates)` — patches one row by id
+ * - `deleteRow(id)` — deletes one row by id
+ * - `upsertRow(row)` — upserts one row (uses id as the conflict key)
+ * - `replaceAll(rows)` — replaces every row (used by reset/clear)
  *
- * For "singleton" tables (app_settings, site_content), the entire row is
- * treated as a single document — the hook reads/writes the row with id='singleton'.
+ * The `state` array is always kept in sync via Supabase Realtime
+ * (postgres_changes on INSERT/UPDATE/DELETE).
  */
-export function useSupabaseState<T>(
+export function useSupabaseCollection<T extends { id: string }>(
+  table: string,
+  initialValue: T[]
+): {
+  state: T[];
+  loaded: boolean;
+  insertRow: (row: T) => Promise<void>;
+  updateRow: (id: string, updates: Partial<T>) => Promise<void>;
+  deleteRow: (id: string) => Promise<void>;
+  upsertRow: (row: T) => Promise<void>;
+  replaceAll: (rows: T[]) => Promise<void>;
+  setState: React.Dispatch<React.SetStateAction<T[]>>;
+} {
+  const [state, setState] = useState<T[]>(initialValue);
+  const [loaded, setLoaded] = useState(false);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  // Load initial data + subscribe to realtime changes
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const { data, error } = await supabase.from(table).select('*').order('created_at', { ascending: false });
+        if (!cancelled && !error && data) {
+          const camelData = (data as Row[]).map(row => toCamelRow<Row>(row)) as unknown as T[];
+          setState(camelData);
+        }
+      } catch {
+        // fall back to initialValue
+      }
+      if (!cancelled) setLoaded(true);
+    })();
+
+    const channel = supabase
+      .channel(`realtime-${table}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table }, (payload) => {
+        const newRow = toCamelRow<Row>(payload.new as Row) as unknown as T;
+        setState(prev => {
+          if (prev.some(r => r.id === newRow.id)) return prev;
+          return [newRow, ...prev];
+        });
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table }, (payload) => {
+        const updatedRow = toCamelRow<Row>(payload.new as Row) as unknown as T;
+        setState(prev => prev.map(r => (r.id === updatedRow.id ? { ...r, ...updatedRow } : r)));
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table }, (payload) => {
+        const oldId = (payload.old as Row).id as string;
+        setState(prev => prev.filter(r => r.id !== oldId));
+      })
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      cancelled = true;
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [table]);
+
+  const insertRow = useCallback(async (row: T) => {
+    const snake = toSnakeRow(row as unknown as Row);
+    await supabase.from(table).insert(snake);
+    // Realtime will add the row to state, but add optimistically
+    setState(prev => {
+      if (prev.some(r => r.id === row.id)) return prev;
+      return [row, ...prev];
+    });
+  }, [table]);
+
+  const updateRow = useCallback(async (id: string, updates: Partial<T>) => {
+    const snake = toSnakeRow(updates as unknown as Row);
+    await supabase.from(table).update(snake).eq('id', id);
+    setState(prev => prev.map(r => (r.id === id ? { ...r, ...updates } : r)));
+  }, [table]);
+
+  const deleteRow = useCallback(async (id: string) => {
+    await supabase.from(table).delete().eq('id', id);
+    setState(prev => prev.filter(r => r.id !== id));
+  }, [table]);
+
+  const upsertRow = useCallback(async (row: T) => {
+    const snake = toSnakeRow(row as unknown as Row);
+    await supabase.from(table).upsert(snake, { onConflict: 'id' });
+    setState(prev => {
+      const idx = prev.findIndex(r => r.id === row.id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = row;
+        return next;
+      }
+      return [row, ...prev];
+    });
+  }, [table]);
+
+  const replaceAll = useCallback(async (rows: T[]) => {
+    // Delete all existing rows, then insert the new set
+    await supabase.from(table).delete().neq('id', '___impossible___');
+    if (rows.length > 0) {
+      const snakeRows = rows.map(r => toSnakeRow(r as unknown as Row));
+      await supabase.from(table).insert(snakeRows);
+    }
+    setState(rows);
+  }, [table]);
+
+  return { state, loaded, insertRow, updateRow, deleteRow, upsertRow, replaceAll, setState };
+}
+
+/**
+ * Singleton hook for tables that store a single JSON document (e.g. site_content).
+ * Reads/writes one row with id='singleton' and a jsonb column.
+ * Also subscribes to realtime updates.
+ */
+export function useSupabaseSingleton<T>(
   table: string,
   initialValue: T,
-  options?: { singleton?: boolean; singletonColumn?: string }
+  column: string = 'content'
 ): [T, (value: T | ((prev: T) => T)) => void, boolean] {
   const [state, setState] = useState<T>(initialValue);
   const [loaded, setLoaded] = useState(false);
   const isInitialLoad = useRef(true);
   const skipNextWrite = useRef(false);
 
-  // Load initial data from Supabase
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        if (options?.singleton) {
-          const col = options.singletonColumn ?? 'content';
-          const { data, error } = await supabase
-            .from(table)
-            .select(col)
-            .eq('id', 'singleton')
-            .maybeSingle();
-          if (!cancelled && !error && data) {
-            const val = (data as Record<string, unknown>)[col];
-            if (val !== null && val !== undefined) {
-              skipNextWrite.current = true;
-              setState(val as T);
-            }
-          }
-        } else {
-          const { data, error } = await supabase.from(table).select('*');
-          if (!cancelled && !error && data) {
-            const camelData = (data as Record<string, unknown>[]).map(row =>
-              toCamelRow<Record<string, unknown>>(row)
-            );
+        const { data, error } = await supabase
+          .from(table)
+          .select(column)
+          .eq('id', 'singleton')
+          .maybeSingle();
+        if (!cancelled && !error && data) {
+          const val = (data as unknown as Record<string, unknown>)[column];
+          if (val !== null && val !== undefined) {
             skipNextWrite.current = true;
-            setState(camelData as unknown as T);
+            setState(val as T);
           }
         }
       } catch {
-        // ignore — fall back to initialValue
+        // ignore
       }
       if (!cancelled) {
         setLoaded(true);
         isInitialLoad.current = false;
       }
     })();
-    return () => { cancelled = true; };
-  }, [table, options?.singleton, options?.singletonColumn]);
 
-  // Persist to Supabase on state change (skip initial load)
+    const channel = supabase
+      .channel(`realtime-${table}-singleton`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table }, (payload) => {
+        const newRow = payload.new as Record<string, unknown>;
+        const val = newRow[column];
+        if (val !== null && val !== undefined) {
+          skipNextWrite.current = true;
+          setState(val as T);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [table, column]);
+
   useEffect(() => {
     if (isInitialLoad.current) return;
     if (skipNextWrite.current) {
@@ -71,26 +196,14 @@ export function useSupabaseState<T>(
     }
     (async () => {
       try {
-        if (options?.singleton) {
-          const col = options.singletonColumn ?? 'content';
-          await supabase
-            .from(table)
-            .upsert({ id: 'singleton', [col]: state, updated_at: new Date().toISOString() });
-        } else {
-          const rows = state as unknown as Record<string, unknown>[];
-          if (Array.isArray(rows)) {
-            await supabase.from(table).delete().neq('id', '___impossible___');
-            if (rows.length > 0) {
-              const snakeRows = rows.map(r => toSnakeRow(r));
-              await supabase.from(table).insert(snakeRows);
-            }
-          }
-        }
+        await supabase
+          .from(table)
+          .upsert({ id: 'singleton', [column]: state, updated_at: new Date().toISOString() });
       } catch {
-        // ignore write errors
+        // ignore
       }
     })();
-  }, [state, table, options?.singleton, options?.singletonColumn]);
+  }, [state, table, column]);
 
   const setSupabaseState = useCallback((value: T | ((prev: T) => T)) => {
     setState(prev => (value instanceof Function ? (value as (prev: T) => T)(prev) : value));
