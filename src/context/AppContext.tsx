@@ -255,7 +255,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       joined_date: user.joinedDate,
       password: user.password ?? '',
     });
-    if (error) console.error('Failed to insert app_user:', error.message);
+    if (error) throw new Error(error.message);
   }, []);
 
   const deleteAppUser = useCallback(async (id: string) => {
