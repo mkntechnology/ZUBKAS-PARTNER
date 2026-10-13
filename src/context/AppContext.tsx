@@ -444,7 +444,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const insertedPartner = await partnersHook.insertRow(newPartner);
 
     const newUser: User = {
-      id: `user-${Date.now()}`,
+      id: crypto.randomUUID(),
       email: p.email, name: p.name, role: 'partner',
       partnerId: insertedPartner.id, phone: p.phone, company: p.company, joinedDate: p.joinedDate,
     };
@@ -558,7 +558,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // ===== PLANS =====
   const addPlan: AppContextValue['addPlan'] = useCallback((p) => {
-    plansHook.insertRow({ ...p, id: `plan-${Date.now()}`, isCustom: true });
+    plansHook.insertRow({ ...p, id: '', isCustom: true });
   }, [plansHook]);
 
   const deletePlan: AppContextValue['deletePlan'] = useCallback((id) => {
@@ -567,7 +567,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // ===== PRODUCTS =====
   const addProduct: AppContextValue['addProduct'] = useCallback((p) => {
-    productsHook.insertRow({ ...p, id: `prod-${Date.now()}` });
+    productsHook.insertRow({ ...p, id: '' });
   }, [productsHook]);
 
   const deleteProduct: AppContextValue['deleteProduct'] = useCallback((id) => {
@@ -597,7 +597,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const lead = leads.find(l => l.id === id);
     if (lead) {
       notificationsHook.insertRow({
-        id: `n-${Date.now()}`, userId: lead.partnerId,
+        id: '', userId: lead.partnerId,
         title: 'Lead Approved',
         message: `Your lead "${lead.companyName}" has been approved and locked for ${settingsState.leadLockDays} days. Convert it before the lock expires.`,
         type: 'lead', date: today, read: false,
@@ -624,7 +624,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const lead = leads.find(l => l.id === id);
     if (lead) {
       notificationsHook.insertRow({
-        id: `n-${Date.now()}`, userId: lead.partnerId,
+        id: '', userId: lead.partnerId,
         title: details.paymentStatus === 'Paid' ? 'Payment Confirmed' : 'Payment Marked Unpaid',
         message: `Payment for lead "${lead.companyName}" has been marked as ${details.paymentStatus} by admin.${details.paymentStatus === 'Unpaid' ? ' Commissions are paused until payment is confirmed.' : ''}`,
         type: 'payment', date: new Date().toISOString().split('T')[0], read: false,
@@ -641,7 +641,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       : new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0]);
     const commissionEndDate = new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0];
     const newCustomer: Customer = {
-      id: `c-${Date.now()}`, partnerId: lead.partnerId,
+      id: '', partnerId: lead.partnerId,
       name: lead.contactName, companyName: lead.companyName,
       phone: lead.phone, email: lead.email, whatsapp: lead.whatsapp ?? lead.phone,
       planType: lead.planType ?? 'Monthly', planTier: 'Premium',
@@ -655,7 +655,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     customersHook.insertRow(newCustomer);
     leadsHook.updateRow(id, { status: 'Converted' });
     notificationsHook.insertRow({
-      id: `n-${Date.now()}`, userId: lead.partnerId,
+      id: '', userId: lead.partnerId,
       title: 'Lead Converted',
       message: `Your lead "${lead.companyName}" has been converted to a customer.`,
       type: 'lead', date: today, read: false,
@@ -666,7 +666,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const partner = l.partnerId === 'none' ? null : partners.find(p => p.id === l.partnerId);
     const today = new Date().toISOString().split('T')[0];
     const newLead: Lead = {
-      id: `l-${Date.now()}`, partnerId: l.partnerId,
+      id: '', partnerId: l.partnerId,
       partnerName: partner?.name ?? 'Admin (Direct)',
       companyName: l.companyName, contactName: l.contactName,
       email: l.email, phone: l.phone, whatsapp: l.whatsapp,
@@ -677,7 +677,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     leadsHook.insertRow(newLead);
     if (partner) {
       notificationsHook.insertRow({
-        id: `n-${Date.now()}`, userId: partner.id,
+        id: '', userId: partner.id,
         title: 'New Lead Assigned',
         message: `A new lead for "${l.companyName}" has been created by admin and assigned to you.`,
         type: 'lead', date: today, read: false,
@@ -695,7 +695,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const partner = partners.find(p => p.id === l.partnerId);
     const today = new Date().toISOString().split('T')[0];
     const newLead: Lead = {
-      ...l, id: `l-${Date.now()}`,
+      ...l, id: '',
       status: 'Pending Approval', submittedDate: today, lockEndDate: today,
       partnerName: partner?.name ?? 'Unknown',
     };
@@ -726,7 +726,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ===== ANNOUNCEMENTS =====
   const addAnnouncement: AppContextValue['addAnnouncement'] = useCallback((a) => {
     const newAnn: Announcement = {
-      ...a, id: `a-${Date.now()}`,
+      ...a, id: '',
       date: new Date().toISOString().split('T')[0],
       author: currentUser?.name ?? 'Admin',
       authorRole: currentUser?.role === 'admin' ? 'Admin' : (currentUser?.employeeRole ?? 'Employee'),
@@ -734,7 +734,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     announcementsHook.insertRow(newAnn);
     notificationsHook.insertRow({
-      id: `n-${Date.now()}`, userId: 'broadcast',
+      id: '', userId: 'broadcast',
       title: 'New Announcement', message: a.title,
       type: 'announcement', date: newAnn.date, read: false,
     });
@@ -838,7 +838,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ===== CHAT =====
   const startChatThread = useCallback((subject: string): string => {
     if (!currentUser || !currentUser.partnerId) return '';
-    const threadId = `chat-${Date.now()}`;
+    const threadId = crypto.randomUUID();
     const now = new Date().toISOString();
     const partner = partners.find(p => p.id === currentUser.partnerId);
     const newThread: ChatThread = {
@@ -855,7 +855,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!currentUser) return;
     const now = new Date().toISOString();
     const msg: ChatMessage = {
-      id: `msg-${Date.now()}`, threadId,
+      id: '', threadId,
       senderType: fromSupport ? 'support' : 'partner',
       senderName: currentUser.name, text, timestamp: now, read: false,
     };
