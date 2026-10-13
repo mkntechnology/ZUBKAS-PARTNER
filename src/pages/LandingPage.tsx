@@ -51,7 +51,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3.5">
           <div className="flex items-center gap-2.5">
             <img
-              src="/assets/icons/zubkas-logo.png"
+              src="/assets/icons/zubkas_icon_hd_new.png"
               alt="Zubkas"
               className="h-9 w-9 object-contain"
             />
@@ -345,7 +345,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
           <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
             <div className="flex items-center gap-2.5">
               <img
-                src="/assets/icons/zubkas-logo.png"
+                src="/assets/icons/zubkas_icon_hd_new.png"
                 alt="Zubkas"
                 className="h-8 w-8 object-contain"
               />

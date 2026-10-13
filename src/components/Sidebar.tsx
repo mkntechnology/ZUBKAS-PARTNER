@@ -31,7 +31,7 @@ export function Sidebar({ items, active, onNavigate, open, onClose, userName, us
         <div className="flex h-16 items-center justify-between border-b border-gray-100 px-5">
           <div className="flex items-center gap-2.5">
             <img
-              src="/assets/icons/zubkas-logo.png"
+              src="/assets/icons/zubkas_icon_hd_new.png"
               alt="Zubkas"
               className="h-9 w-9 object-contain"
             />

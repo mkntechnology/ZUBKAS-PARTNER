@@ -442,16 +442,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
       monthlySales: 0,
     };
     const insertedPartner = await partnersHook.insertRow(newPartner);
+    if (!insertedPartner.id) {
+      throw new Error('Partner was created but the database did not return a valid ID. Cannot create login account.');
+    }
 
     const newUser: User = {
       id: crypto.randomUUID(),
       email: p.email, name: p.name, role: 'partner',
       partnerId: insertedPartner.id, phone: p.phone, company: p.company, joinedDate: p.joinedDate,
     };
+    try {
+      await insertAppUser({ ...newUser, password: p.password });
+    } catch (appUserErr) {
+      partnersHook.deleteRow(insertedPartner.id);
+      throw new Error(
+        `Partner login account could not be created: ${appUserErr instanceof Error ? appUserErr.message : 'Unknown error'}. The partner record was rolled back. Please try again.`
+      );
+    }
     setPartnerUsers(prev => [...prev, newUser]);
     setAppUsers(prev => [...prev, newUser]);
     setUserPasswords(prev => ({ ...prev, [newUser.id]: p.password }));
-    await insertAppUser({ ...newUser, password: p.password });
   }, [partnersHook, setPartnerUsers, setAppUsers, setUserPasswords, insertAppUser]);
 
   const updatePartner: AppContextValue['updatePartner'] = useCallback((id, updates) => {
