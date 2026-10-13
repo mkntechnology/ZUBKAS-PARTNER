@@ -57,7 +57,7 @@ const emptyCreateForm: CreateLeadForm = {
 };
 
 export function AdminLeads() {
-  const { leads, products, partners, settings, deleteLead, updateLeadStatus, approveLead, adminAddLead, updateLeadPayment } = useApp();
+  const { leads, products, partners, customers, settings, deleteLead, updateLeadStatus, approveLead, adminAddLead, updateLeadPayment } = useApp();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null);
@@ -83,6 +83,26 @@ export function AdminLeads() {
   });
   const [paymentErrors, setPaymentErrors] = useState<Partial<PaymentForm>>({});
   const [approvalErrors, setApprovalErrors] = useState<Partial<ApprovalForm>>({});
+  const [selectedCustomerId, setSelectedCustomerId] = useState('');
+
+  const handleCustomerSelect = (customerId: string) => {
+    setSelectedCustomerId(customerId);
+    if (customerId === '') {
+      setCreateForm(prev => ({ ...prev, companyName: '', contactName: '', email: '', phone: '', whatsapp: '' }));
+      return;
+    }
+    const customer = customers.find(c => c.id === customerId);
+    if (customer) {
+      setCreateForm(prev => ({
+        ...prev,
+        companyName: customer.companyName,
+        contactName: customer.name,
+        email: customer.email,
+        phone: customer.phone,
+        whatsapp: customer.whatsapp ?? customer.phone,
+      }));
+    }
+  };
 
   const filtered = leads.filter(l =>
     (l.companyName.toLowerCase().includes(search.toLowerCase()) ||
@@ -194,6 +214,7 @@ export function AdminLeads() {
     });
     setCreateSuccess(`Lead for "${createForm.companyName}" created successfully!`);
     setCreateForm(emptyCreateForm);
+    setSelectedCustomerId('');
     setCreateErrors({});
     setTimeout(() => { setShowCreate(false); setCreateSuccess(''); }, 2000);
   };
@@ -209,7 +230,7 @@ export function AdminLeads() {
       <SectionHeader
         title="All Leads"
         subtitle={`${leads.length} leads across all partners${pendingCount > 0 ? ` · ${pendingCount} pending approval` : ''}`}
-        action={<button onClick={() => { setCreateForm(emptyCreateForm); setCreateErrors({}); setCreateSuccess(''); setShowCreate(true); }} className="btn-primary"><Plus className="h-4 w-4" /> Create Lead</button>}
+        action={<button onClick={() => { setCreateForm(emptyCreateForm); setSelectedCustomerId(''); setCreateErrors({}); setCreateSuccess(''); setShowCreate(true); }} className="btn-primary"><Plus className="h-4 w-4" /> Create Lead</button>}
       />
 
       {/* Stats */}
@@ -650,6 +671,24 @@ export function AdminLeads() {
             <div className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-600 flex items-center gap-2 animate-fade-in">
               <CheckCircle2 className="h-4 w-4 shrink-0" />
               {createSuccess}
+            </div>
+          )}
+
+          {/* Customer Selection */}
+          {customers.length > 0 && (
+            <div>
+              <label className="text-sm font-medium text-gray-700">Select Existing Customer <span className="text-gray-400 font-normal">(optional)</span></label>
+              <select
+                value={selectedCustomerId}
+                onChange={(e) => handleCustomerSelect(e.target.value)}
+                className="input-field mt-1"
+              >
+                <option value="">— Enter manually instead —</option>
+                {customers.map(c => (
+                  <option key={c.id} value={c.id}>{c.name} ({c.companyName})</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-400 mt-1">Selecting a customer auto-fills company, contact, email, phone, and WhatsApp fields.</p>
             </div>
           )}
 

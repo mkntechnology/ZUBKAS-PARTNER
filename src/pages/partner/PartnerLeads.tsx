@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Lock, CircleCheck as CheckCircle2, Circle as XCircle, Clock, TriangleAlert as AlertTriangle, Search, Package, Layers, Trash2 } from 'lucide-react';
+import { Plus, Lock, CircleCheck as CheckCircle2, Circle as XCircle, Clock, TriangleAlert as AlertTriangle, Search, Package, Layers, Trash2, MessageCircle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader, EmptyState } from '@/components/Shared';
 import { Modal } from '@/components/Modal';
@@ -22,6 +22,7 @@ interface LeadForm {
   contactName: string;
   email: string;
   phone: string;
+  whatsapp: string;
   productId: string;
   planType: PlanType;
   notes: string;
@@ -33,6 +34,7 @@ const emptyForm: LeadForm = {
   contactName: '',
   email: '',
   phone: '',
+  whatsapp: '',
   productId: '',
   planType: 'Monthly',
   notes: '',
@@ -57,7 +59,7 @@ export function PartnerLeads() {
 
   const handleCustomerSelect = (customerId: string) => {
     if (customerId === '') {
-      setForm(prev => ({ ...prev, customerId: '', companyName: '', contactName: '', email: '', phone: '' }));
+      setForm(prev => ({ ...prev, customerId: '', companyName: '', contactName: '', email: '', phone: '', whatsapp: '' }));
       return;
     }
     const customer = myCustomers.find(c => c.id === customerId);
@@ -69,6 +71,7 @@ export function PartnerLeads() {
         contactName: customer.name,
         email: customer.email,
         phone: customer.phone,
+        whatsapp: customer.whatsapp ?? customer.phone,
       }));
     }
   };
@@ -84,6 +87,7 @@ export function PartnerLeads() {
       contactName: form.contactName,
       email: form.email,
       phone: form.phone,
+      whatsapp: form.whatsapp,
       notes: form.notes,
       productId: form.productId || undefined,
       productName: selectedProduct?.name,
@@ -275,7 +279,7 @@ export function PartnerLeads() {
                   <option key={c.id} value={c.id}>{c.name} ({c.companyName})</option>
                 ))}
               </select>
-              <p className="text-xs text-gray-400 mt-1">Selecting a customer auto-fills company, contact, email, and phone fields.</p>
+              <p className="text-xs text-gray-400 mt-1">Selecting a customer auto-fills company, contact, email, phone, and WhatsApp fields.</p>
             </div>
           )}
 
@@ -297,6 +301,15 @@ export function PartnerLeads() {
               <div>
                 <label className="text-sm font-medium text-gray-700">Phone <span className="text-red-500">*</span></label>
                 <input required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="input-field mt-1" placeholder="+91 ..." />
+              </div>
+            </div>
+
+            {/* WhatsApp */}
+            <div>
+              <label className="text-sm font-medium text-gray-700">WhatsApp Number <span className="text-red-500">*</span></label>
+              <div className="relative mt-1">
+                <MessageCircle className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input required value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} className="input-field pl-9" placeholder="+91 ..." />
               </div>
             </div>
           </div>
