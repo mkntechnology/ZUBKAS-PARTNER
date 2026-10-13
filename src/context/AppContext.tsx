@@ -56,7 +56,7 @@ interface AppContextValue {
   addPartner: (p: Omit<Partner, 'id' | 'totalCommission' | 'monthlyCommission' | 'pendingCommission' | 'monthlySales'> & { password: string }) => Promise<void>;
   updatePartner: (id: string, updates: Partial<Omit<Partner, 'id'>>) => void;
   deletePartner: (id: string) => void;
-  addEmployee: (e: Omit<Employee, 'id'> & { password: string }) => void;
+  addEmployee: (e: Omit<Employee, 'id'> & { password: string }) => Promise<void>;
   updateEmployee: (id: string, updates: Partial<Omit<Employee, 'id'>>) => void;
   deleteEmployee: (id: string) => void;
   addCategory: (c: Omit<Category, 'id'>) => Promise<void>;
@@ -484,10 +484,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [partnersHook, customersHook, leadsHook, transactionsHook, notificationsHook, customers, leads, transactions, notifications, partnerUsers, setPartnerUsers, setAppUsers, setUserPasswords, deleteAppUser]);
 
   // ===== EMPLOYEES =====
-  const addEmployee: AppContextValue['addEmployee'] = useCallback((e) => {
-    const employeeId = `emp-${Date.now()}`;
+  const addEmployee: AppContextValue['addEmployee'] = useCallback(async (e) => {
     const { password, ...employee } = e;
-    employeesHook.insertRow({ ...employee, id: employeeId });
+    const insertedEmployee = await employeesHook.insertRow({ ...employee, id: '', password } as Employee & { password: string });
+    const employeeId = insertedEmployee.id;
     setUserPasswords(prev => ({ ...prev, [employeeId]: password }));
     const newUser: User = {
       id: employeeId, email: employee.email, name: employee.name,
@@ -495,7 +495,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       phone: employee.phone, whatsapp: employee.whatsapp, joinedDate: employee.joinedDate,
     };
     setAppUsers(prev => [...prev, newUser]);
-    insertAppUser({ ...newUser, password });
+    await insertAppUser({ ...newUser, password });
   }, [employeesHook, setUserPasswords, setAppUsers, insertAppUser]);
 
   const assignEmployeeRole = useCallback((employeeId: string, roleId: string) => {
@@ -505,7 +505,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // ===== ROLES =====
   const addRole = useCallback((r: Omit<Role, 'id'>) => {
-    rolesHook.insertRow({ ...r, id: `role-${Date.now()}` });
+    rolesHook.insertRow({ ...r, id: '' });
   }, [rolesHook]);
 
   const updateRole = useCallback((id: string, updates: Partial<Omit<Role, 'id'>>) => {
