@@ -616,28 +616,53 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [leads, settingsState.leadLockDays, leadsHook, notificationsHook]);
 
   const updateLeadPayment: AppContextValue['updateLeadPayment'] = useCallback((id, details) => {
+    const lead = leads.find(l => l.id === id);
+    const today = new Date().toISOString().split('T')[0];
+    const isPaid = details.paymentStatus === 'Paid';
+
     leadsHook.updateRow(id, {
-      status: details.paymentStatus === 'Paid' ? 'Approved' : 'Locked',
+      status: isPaid ? 'Converted' : 'Locked',
       paymentStatus: details.paymentStatus,
       planPrice: details.planPrice, commissionRate: details.commissionRate,
       renewalDate: details.renewalDate,
     });
+
     const linkedCustomer = customers.find(c => c.leadId === id);
     if (linkedCustomer) {
       customersHook.updateRow(linkedCustomer.id, {
-        status: details.paymentStatus === 'Paid' ? 'Active' : 'Unpaid',
+        status: isPaid ? 'Active' : 'Unpaid',
         commissionRate: details.commissionRate,
         subscriptionAmount: details.planPrice,
         renewalDate: details.renewalDate,
       });
+    } else if (isPaid && lead) {
+      const renewalDate = details.renewalDate ?? (lead.planType === 'Yearly'
+        ? new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]
+        : new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0]);
+      const commissionEndDate = new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0];
+      const newCustomer: Customer = {
+        id: '', partnerId: lead.partnerId,
+        name: lead.contactName, companyName: lead.companyName,
+        phone: lead.phone, email: lead.email, whatsapp: lead.whatsapp ?? lead.phone,
+        planType: lead.planType ?? 'Monthly', planTier: 'Premium',
+        commissionRate: details.commissionRate,
+        subscriptionAmount: details.planPrice,
+        startDate: today, renewalDate,
+        status: 'Active',
+        commissionEarned: 0, commissionEndDate,
+        monthsElapsed: 0, remainingMonths: 12, leadId: lead.id,
+      };
+      customersHook.insertRow(newCustomer);
     }
-    const lead = leads.find(l => l.id === id);
+
     if (lead) {
       notificationsHook.insertRow({
         id: '', userId: lead.partnerId,
-        title: details.paymentStatus === 'Paid' ? 'Payment Confirmed' : 'Payment Marked Unpaid',
-        message: `Payment for lead "${lead.companyName}" has been marked as ${details.paymentStatus} by admin.${details.paymentStatus === 'Unpaid' ? ' Commissions are paused until payment is confirmed.' : ''}`,
-        type: 'payment', date: new Date().toISOString().split('T')[0], read: false,
+        title: isPaid ? 'Payment Confirmed — Lead Converted' : 'Payment Marked Unpaid',
+        message: isPaid
+          ? `Payment for lead "${lead.companyName}" has been confirmed and the lead has been converted to a customer.`
+          : `Payment for lead "${lead.companyName}" has been marked as Unpaid. Commissions are paused until payment is confirmed.`,
+        type: 'payment', date: today, read: false,
       });
     }
   }, [leads, customers, leadsHook, customersHook, notificationsHook]);

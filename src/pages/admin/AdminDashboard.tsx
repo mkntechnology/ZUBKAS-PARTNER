@@ -125,10 +125,10 @@ export function AdminDashboard() {
         <SectionHeader title="Lead Pipeline Overview" subtitle={`${leads.length} total leads across all partners`} />
         <div className="mt-4 grid gap-4 sm:grid-cols-4">
           {[
-            { label: 'Locked', count: leads.filter(l => l.status === 'Locked').length, color: 'bg-amber-50 text-amber-700' },
-            { label: 'Open', count: leads.filter(l => l.status === 'Open').length, color: 'bg-blue-50 text-blue-700' },
+            { label: 'Pending', count: leads.filter(l => l.status === 'Pending Approval').length, color: 'bg-slate-50 text-slate-700' },
+            { label: 'Locked', count: leads.filter(l => l.status === 'Locked' || l.status === 'Approved').length, color: 'bg-amber-50 text-amber-700' },
             { label: 'Converted', count: leads.filter(l => l.status === 'Converted').length, color: 'bg-emerald-50 text-emerald-700' },
-            { label: 'Lost', count: leads.filter(l => l.status === 'Lost').length, color: 'bg-red-50 text-red-700' },
+            { label: 'Lost', count: leads.filter(l => l.status === 'Lost' || l.status === 'Rejected').length, color: 'bg-red-50 text-red-700' },
           ].map(s => (
             <div key={s.label} className="rounded-xl border border-gray-100 p-4 text-center">
               <div className={`inline-flex h-10 w-10 items-center justify-center rounded-full ${s.color} mb-2`}>

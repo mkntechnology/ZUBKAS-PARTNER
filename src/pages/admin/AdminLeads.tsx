@@ -317,6 +317,7 @@ export function AdminLeads() {
                   const lockDaysLeft = daysUntil(l.lockEndDate);
                   const isPending = l.status === 'Pending Approval';
                   const isRejected = l.status === 'Rejected';
+                  const isConverted = l.status === 'Converted';
                   return (
                     <tr
                       key={l.id}
@@ -332,7 +333,9 @@ export function AdminLeads() {
                       <td className="px-4 py-3 text-gray-600">{l.partnerName}</td>
                       <td className="px-4 py-3 text-gray-500 text-xs">{formatDate(l.submittedDate)}</td>
                       <td className="px-4 py-3 text-xs">
-                        {(l.status === 'Locked' || l.status === 'Approved') && lockDaysLeft > 0 ? (
+                        {l.status === 'Converted' ? (
+                          <span className="text-gray-400">—</span>
+                        ) : (l.status === 'Locked' || l.status === 'Approved') && lockDaysLeft > 0 ? (
                           <span className="text-amber-600 font-medium">{lockDaysLeft}d left</span>
                         ) : (
                           <span className="text-gray-400">{formatDate(l.lockEndDate)}</span>
@@ -371,7 +374,7 @@ export function AdminLeads() {
                         <div className="flex items-center justify-center gap-1.5 flex-wrap">
                           <button
                             onClick={() => openApprove(l)}
-                            disabled={l.status === 'Locked' || l.status === 'Approved'}
+                            disabled={l.status === 'Locked' || l.status === 'Approved' || isConverted}
                             className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40"
                             title="Approve lead"
                           >
@@ -380,7 +383,8 @@ export function AdminLeads() {
                           </button>
                           <button
                             onClick={() => openPayment(l)}
-                            className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100"
+                            disabled={isConverted}
+                            className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-40"
                             title="Manage payment"
                           >
                             <CreditCard className="h-3.5 w-3.5" />
@@ -388,7 +392,7 @@ export function AdminLeads() {
                           </button>
                           <button
                             onClick={() => setPendingTarget(l)}
-                            disabled={l.status === 'Pending Approval'}
+                            disabled={l.status === 'Pending Approval' || isConverted}
                             className="inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-40"
                             title="Set as pending"
                           >
@@ -397,7 +401,7 @@ export function AdminLeads() {
                           </button>
                           <button
                             onClick={() => setRejectTarget(l)}
-                            disabled={l.status === 'Rejected'}
+                            disabled={l.status === 'Rejected' || isConverted}
                             className="inline-flex items-center gap-1 rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40"
                             title="Reject lead"
                           >
