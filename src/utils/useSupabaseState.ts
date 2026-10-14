@@ -110,12 +110,14 @@ export function useSupabaseCollection<T extends { id: string }>(
     for (const key of Object.keys(snake)) {
       if (snake[key] === undefined || snake[key] === '') delete snake[key];
     }
-    await supabase.from(table).update(snake).eq('id', id);
+    const { error } = await supabase.from(table).update(snake).eq('id', id);
+    if (error) throw new Error(error.message);
     setState(prev => prev.map(r => (r.id === id ? { ...r, ...updates } : r)));
   }, [table]);
 
   const deleteRow = useCallback(async (id: string) => {
-    await supabase.from(table).delete().eq('id', id);
+    const { error } = await supabase.from(table).delete().eq('id', id);
+    if (error) throw new Error(error.message);
     setState(prev => prev.filter(r => r.id !== id));
   }, [table]);
 

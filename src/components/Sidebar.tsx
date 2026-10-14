@@ -33,7 +33,12 @@ export function Sidebar({ items, active, onNavigate, open, onClose, userName, us
             <img
               src="/assets/icons/zubkas_icon_hd_new.png"
               alt="Zubkas"
-              className="h-9 w-9 object-contain"
+              width={36}
+              height={36}
+              className="h-9 w-9 object-contain shrink-0"
+              loading="eager"
+              draggable={false}
+              onError={(e) => { const t = e.currentTarget; if (!t.dataset.fb) { t.dataset.fb = '1'; t.src = '/assets/icons/zubkas_icon_hd_white.png'; } }}
             />
             <div>
               <p className="font-display text-base font-bold text-gray-900 leading-tight">Zubkas</p>

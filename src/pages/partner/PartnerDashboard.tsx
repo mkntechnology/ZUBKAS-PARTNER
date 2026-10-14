@@ -1,14 +1,17 @@
-import { Users, DollarSign, TrendingUp, Clock, Crown, Star, Award, Rocket, Trophy, ArrowUpRight, AlertTriangle, Calendar } from 'lucide-react';
+import { Users, DollarSign, TrendingUp, Clock, Crown, Star, Award, Rocket, Trophy, ArrowUpRight, TriangleAlert as AlertTriangle, Calendar } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { StatCard, SectionHeader } from '@/components/Shared';
 import { formatCurrency, formatDate, getInitials } from '@/utils/helpers';
+import { computeAllPartnerStats, partnerWithStats } from '@/utils/partnerStats';
 import { leaderboard } from '@/data/mockData';
 
 const badgeIcons: Record<string, typeof Crown> = { 'Top Performer': Crown, 'Rising Star': Star, 'Consistent Earner': Award, 'New Champion': Rocket };
 
 export function PartnerDashboard() {
-  const { currentUser, partners, customers, leads } = useApp();
-  const partner = partners.find(p => p.id === currentUser?.partnerId);
+  const { currentUser, partners, customers, leads, transactions } = useApp();
+  const statsMap = computeAllPartnerStats(partners, customers, leads, transactions);
+  const partnersWithStats = partners.map(p => partnerWithStats(p, statsMap));
+  const partner = partnersWithStats.find(p => p.id === currentUser?.partnerId);
 
   if (!partner) return <div>Partner not found</div>;
 
@@ -17,7 +20,7 @@ export function PartnerDashboard() {
   const unpaidCustomers = myCustomers.filter(c => c.status === 'Unpaid');
 
   // Top performers for widget
-  const topPerformers = [...partners].sort((a, b) => b.monthlySales - a.monthlySales).slice(0, 4);
+  const topPerformers = [...partnersWithStats].sort((a, b) => b.monthlySales - a.monthlySales).slice(0, 4);
 
   return (
     <div className="space-y-6">

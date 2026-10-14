@@ -1,14 +1,17 @@
 import { useState } from 'react';
-import { Mail, Phone, Calendar, Building2, Shield, Crown, Star, Award, Rocket, Lock, Eye, EyeOff, CheckCircle2, KeyRound, Save, User as UserIcon, MessageCircle } from 'lucide-react';
+import { Mail, Phone, Calendar, Building2, Shield, Crown, Star, Award, Rocket, Lock, Eye, EyeOff, CircleCheck as CheckCircle2, KeyRound, Save, User as UserIcon, MessageCircle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader } from '@/components/Shared';
 import { formatDate, getInitials } from '@/utils/helpers';
+import { computeAllPartnerStats, partnerWithStats } from '@/utils/partnerStats';
 
 const badgeIcons: Record<string, typeof Crown> = { 'Top Performer': Crown, 'Rising Star': Star, 'Consistent Earner': Award, 'New Champion': Rocket };
 
 export function PartnerProfile() {
-  const { currentUser, partners, customers, updateUserProfile, updateUserPassword } = useApp();
-  const partner = partners.find(p => p.id === currentUser?.partnerId);
+  const { currentUser, partners, customers, leads, transactions, updateUserProfile, updateUserPassword } = useApp();
+  const rawPartner = partners.find(p => p.id === currentUser?.partnerId);
+  const statsMap = computeAllPartnerStats(partners, customers, leads, transactions);
+  const partner = rawPartner ? partnerWithStats(rawPartner, statsMap) : null;
 
   const [name, setName] = useState(currentUser?.name ?? '');
   const [email, setEmail] = useState(currentUser?.email ?? '');

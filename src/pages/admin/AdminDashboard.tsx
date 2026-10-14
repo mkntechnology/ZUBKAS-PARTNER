@@ -2,18 +2,21 @@ import { Users, DollarSign, TrendingUp, Building2, UserPlus, Trophy, ArrowUpRigh
 import { useApp } from '@/context/AppContext';
 import { StatCard, SectionHeader } from '@/components/Shared';
 import { formatCurrency, formatDate, getInitials } from '@/utils/helpers';
+import { computeAllPartnerStats, partnerWithStats } from '@/utils/partnerStats';
 
 const badgeIcons: Record<string, typeof Crown> = { 'Top Performer': Crown, 'Rising Star': Star, 'Consistent Earner': Award, 'New Champion': Rocket };
 
 export function AdminDashboard() {
-  const { partners, leads, announcements, customers } = useApp();
+  const { partners, leads, announcements, customers, transactions } = useApp();
+  const statsMap = computeAllPartnerStats(partners, customers, leads, transactions);
+  const partnersWithStats = partners.map(p => partnerWithStats(p, statsMap));
 
-  const totalCommission = partners.reduce((s, p) => s + p.totalCommission, 0);
-  const totalMonthlySales = partners.reduce((s, p) => s + p.monthlySales, 0);
+  const totalCommission = partnersWithStats.reduce((s, p) => s + p.totalCommission, 0);
+  const totalMonthlySales = partnersWithStats.reduce((s, p) => s + p.monthlySales, 0);
   const totalCustomers = customers.filter(c => c.status === 'Active').length;
-  const topPerformers = [...partners].sort((a, b) => b.monthlySales - a.monthlySales).slice(0, 4);
+  const topPerformers = [...partnersWithStats].sort((a, b) => b.monthlySales - a.monthlySales).slice(0, 4);
 
-  const recentPartners = [...partners].sort((a, b) => new Date(b.joinedDate).getTime() - new Date(a.joinedDate).getTime()).slice(0, 5);
+  const recentPartners = [...partnersWithStats].sort((a, b) => new Date(b.joinedDate).getTime() - new Date(a.joinedDate).getTime()).slice(0, 5);
 
   return (
     <div className="space-y-6">

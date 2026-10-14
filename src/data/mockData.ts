@@ -59,7 +59,7 @@ export const partners: Partner[] = [
 
 function calcRemaining(startDate: string, planType: 'Monthly' | 'Yearly'): { monthsElapsed: number; remainingMonths: number; commissionEndDate: string } {
   const start = new Date(startDate);
-  const now = new Date('2026-10-08');
+  const now = new Date();
   const monthsElapsed = Math.max(0, (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth()));
   if (planType === 'Yearly') {
     return { monthsElapsed: 1, remainingMonths: 0, commissionEndDate: new Date(start.getFullYear() + 1, start.getMonth(), start.getDate()).toISOString().split('T')[0] };

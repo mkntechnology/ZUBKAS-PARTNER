@@ -4,6 +4,7 @@ import { useApp } from '@/context/AppContext';
 import { SectionHeader, EmptyState } from '@/components/Shared';
 import { Modal } from '@/components/Modal';
 import { formatCurrency, formatDate, getInitials } from '@/utils/helpers';
+import { computeAllPartnerStats, partnerWithStats } from '@/utils/partnerStats';
 import type { Partner } from '@/types';
 
 const badgeIcons: Record<string, typeof Crown> = { 'Top Performer': Crown, 'Rising Star': Star, 'Consistent Earner': Award, 'New Champion': Rocket };
@@ -24,7 +25,10 @@ export function AdminPartners() {
   const [submitting, setSubmitting] = useState(false);
   const [revealedPasswords, setRevealedPasswords] = useState<Set<string>>(new Set());
 
-  const filtered = partners.filter(p =>
+  const statsMap = computeAllPartnerStats(partners, customers, leads, transactions);
+  const partnersWithStats = partners.map(p => partnerWithStats(p, statsMap));
+
+  const filtered = partnersWithStats.filter(p =>
     (p.name.toLowerCase().includes(search.toLowerCase()) || p.company.toLowerCase().includes(search.toLowerCase())) &&
     (statusFilter === 'All' || p.status === statusFilter)
   );

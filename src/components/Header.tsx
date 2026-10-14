@@ -3,6 +3,9 @@ import { Bell, Search, LogOut, Menu, ChevronDown } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { getInitials, formatDate } from '@/utils/helpers';
 
+const logoImg = '/assets/icons/zubkas_icon_hd_new.png';
+const logoImgFallback = '/assets/icons/zubkas_icon_hd_white.png';
+
 interface HeaderProps {
   onToggleSidebar: () => void;
   onNavigate: (page: string) => void;
@@ -29,6 +32,10 @@ export function Header({ onToggleSidebar, onNavigate }: HeaderProps) {
         <button onClick={onToggleSidebar} className="rounded-lg p-2 text-gray-600 hover:bg-gray-100 lg:hidden">
           <Menu className="h-5 w-5" />
         </button>
+        <div className="flex items-center gap-2 lg:hidden">
+          <img src={logoImg} alt="Zubkas" width={32} height={32} className="h-8 w-8 object-contain shrink-0" loading="eager" draggable={false} onError={(e) => { const t = e.currentTarget; if (!t.dataset.fb) { t.dataset.fb = '1'; t.src = logoImgFallback; } }} />
+          <p className="font-display text-sm font-bold text-gray-900">Zubkas</p>
+        </div>
         <div className="relative hidden sm:block">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input

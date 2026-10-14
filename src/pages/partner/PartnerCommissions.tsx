@@ -1,29 +1,121 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { DollarSign, TrendingUp, Clock, AlertTriangle, Calendar, Info, CheckCircle2, Wallet, BarChart3 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader, StatCard, EmptyState } from '@/components/Shared';
 import { formatCurrency, formatCurrencyFull, formatDate } from '@/utils/helpers';
+import { computePartnerStats } from '@/utils/partnerStats';
+import type { CommissionTransaction } from '@/types';
+
+/**
+ * Dynamically builds a commission transaction list from converted/paid leads
+ * and active customers when the commission_transactions table is empty.
+ * This ensures the commissions section is never empty even before any
+ * explicit transaction records have been created.
+ */
+function buildTransactionsFromLeadsAndCustomers(
+  partnerId: string,
+  leads: { partnerId: string; status: string; paymentStatus?: string; companyName: string; contactName: string; planType?: string; planPrice?: number; commissionRate?: number; planTier?: string; submittedDate: string }[],
+  customers: { partnerId: string; companyName: string; name: string; planType: string; planTier: string; subscriptionAmount: number; commissionRate: number; commissionEarned: number; status: string; startDate: string; remainingMonths: number }[],
+): CommissionTransaction[] {
+  const txns: CommissionTransaction[] = [];
+
+  for (const l of leads) {
+    if (l.partnerId !== partnerId) continue;
+    if (l.status !== 'Converted' && l.paymentStatus !== 'Paid') continue;
+    const price = l.planPrice ?? 0;
+    const rate = l.commissionRate ?? 0;
+    if (price === 0 || rate === 0) continue;
+    const amount = price * rate / 100;
+    const month = l.submittedDate.slice(0, 7);
+    txns.push({
+      id: `lead-${l.companyName}-${month}`,
+      partnerId,
+      customerName: l.contactName || l.companyName,
+      companyName: l.companyName,
+      amount,
+      rate,
+      planTier: l.planTier ?? 'Premium',
+      month,
+      date: l.submittedDate,
+      status: 'Paid',
+    });
+  }
+
+  for (const c of customers) {
+    if (c.partnerId !== partnerId) continue;
+    if (c.status === 'Active' && c.commissionEarned > 0) {
+      const month = c.startDate.slice(0, 7);
+      const amount = c.commissionEarned;
+      txns.push({
+        id: `cust-${c.companyName}-${month}`,
+        partnerId,
+        customerName: c.name,
+        companyName: c.companyName,
+        amount,
+        rate: c.commissionRate,
+        planTier: c.planTier,
+        month,
+        date: c.startDate,
+        status: 'Paid',
+      });
+    } else if (c.status === 'Unpaid') {
+      const amount = c.subscriptionAmount * c.commissionRate / 100;
+      const month = new Date().toISOString().slice(0, 7);
+      txns.push({
+        id: `cust-unpaid-${c.companyName}-${month}`,
+        partnerId,
+        customerName: c.name,
+        companyName: c.companyName,
+        amount,
+        rate: c.commissionRate,
+        planTier: c.planTier,
+        month,
+        date: new Date().toISOString().split('T')[0],
+        status: 'Blocked',
+      });
+    }
+  }
+
+  return txns;
+}
+
 export function PartnerCommissions() {
-  const { currentUser, customers, settings, plans, transactions } = useApp();
+  const { currentUser, partners, customers, leads, settings, plans, transactions } = useApp();
   const [view, setView] = useState<'all' | 'active' | 'unpaid' | 'capped'>('all');
   const [txFilter, setTxFilter] = useState<'All' | 'Paid' | 'Pending' | 'Blocked'>('All');
 
-  const myCustomers = customers.filter(c => c.partnerId === currentUser?.partnerId);
-  const myTransactions = transactions.filter(t => t.partnerId === currentUser?.partnerId);
-  const filteredTx = myTransactions.filter(t => txFilter === 'All' || t.status === txFilter);
+  const partner = partners.find(p => p.id === currentUser?.partnerId);
 
-  const totalEarned = myCustomers.reduce((s, c) => s + c.commissionEarned, 0);
-  const paidAmount = myTransactions.filter(t => t.status === 'Paid').reduce((s, t) => s + t.amount, 0);
-  const monthlyCommission = myCustomers.filter(c => c.status === 'Active').reduce((s, c) => {
-    if (c.planType === 'Monthly' && c.remainingMonths > 0) return s + (c.subscriptionAmount * c.commissionRate / 100);
-    if (c.planType === 'Yearly') return s + c.commissionEarned;
-    return s;
-  }, 0);
-  const blockedCommission = myCustomers.filter(c => c.status === 'Unpaid').reduce((s, c) => s + (c.subscriptionAmount * c.commissionRate / 100), 0);
+  const myCustomers = customers.filter(c => c.partnerId === currentUser?.partnerId);
+  const myLeads = leads.filter(l => l.partnerId === currentUser?.partnerId);
+  const myTransactions = transactions.filter(t => t.partnerId === currentUser?.partnerId);
+
+  // Compute stats dynamically from leads + customers (same as Dashboard)
+  const stats = useMemo(
+    () => partner ? computePartnerStats(partner, customers, leads, transactions) : null,
+    [partner, customers, leads, transactions],
+  );
+
+  // Fall back to dynamically generated transactions when the table is empty
+  const effectiveTransactions = useMemo(() => {
+    if (myTransactions.length > 0) return myTransactions;
+    return buildTransactionsFromLeadsAndCustomers(
+      currentUser?.partnerId ?? '',
+      myLeads,
+      myCustomers,
+    );
+  }, [myTransactions, myLeads, myCustomers, currentUser?.partnerId]);
+
+  const filteredTx = effectiveTransactions.filter(t => txFilter === 'All' || t.status === txFilter);
+
+  const totalEarned = stats?.totalCommission ?? 0;
+  const paidAmount = effectiveTransactions.filter(t => t.status === 'Paid').reduce((s, t) => s + t.amount, 0);
+  const monthlyCommission = stats?.monthlyCommission ?? 0;
+  const blockedCommission = stats?.pendingCommission ?? 0;
   const cappedCount = myCustomers.filter(c => c.planType === 'Monthly' && c.remainingMonths === 0).length;
 
-  // Monthly breakdown for chart
-  const monthlyData = myTransactions.reduce((acc, t) => {
+  // Monthly breakdown for chart — uses effective transactions (real or generated)
+  const monthlyData = effectiveTransactions.reduce((acc, t) => {
     if (t.status === 'Paid') {
       acc[t.month] = (acc[t.month] ?? 0) + t.amount;
     }
@@ -156,56 +248,64 @@ export function PartnerCommissions() {
               </tr>
             </thead>
             <tbody>
-              {filteredCustomers.map(c => {
-                const monthlyAmt = (c.subscriptionAmount * c.commissionRate / 100);
-                const progress = c.planType === 'Monthly' ? Math.min(100, (c.monthsElapsed / 12) * 100) : 100;
-                return (
-                  <tr key={c.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-gray-900">{c.name}</p>
-                      <p className="text-xs text-gray-500">{c.companyName}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`badge ${c.planType === 'Yearly' ? 'badge-zubkas' : 'badge-neutral'}`}>{c.planType}</span>
-                      <span className="text-xs text-gray-500 block mt-0.5">{c.planTier}</span>
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-600">{formatCurrencyFull(c.subscriptionAmount)}</td>
-                    <td className="px-4 py-3 text-right font-medium text-zubkas-700">{c.commissionRate}%</td>
-                    <td className="px-4 py-3 text-right">
-                      {c.status === 'Unpaid' ? (
-                        <span className="text-amber-600 font-medium line-through">{formatCurrency(monthlyAmt)}</span>
-                      ) : c.planType === 'Monthly' && c.remainingMonths === 0 ? (
-                        <span className="text-gray-400">Capped</span>
-                      ) : (
-                        <span className="font-medium text-gray-900">{formatCurrency(monthlyAmt)}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatCurrency(c.commissionEarned)}</td>
-                    <td className="px-4 py-3">
-                      <div className="w-24 mx-auto">
-                        <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-                          <div
-                            className={`h-2 rounded-full transition-all ${c.status === 'Unpaid' ? 'bg-amber-400' : progress >= 100 ? 'bg-gray-400' : 'bg-emerald-500'}`}
-                            style={{ width: `${progress}%` }}
-                          />
-                        </div>
-                        {c.planType === 'Monthly' && (
-                          <p className="text-[10px] text-gray-400 text-center mt-1">{c.monthsElapsed}/12 mo</p>
+              {filteredCustomers.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-12">
+                    <EmptyState icon={Wallet} title="No customers yet" message="Customers will appear here once your leads are converted" />
+                  </td>
+                </tr>
+              ) : (
+                filteredCustomers.map(c => {
+                  const monthlyAmt = (c.subscriptionAmount * c.commissionRate / 100);
+                  const progress = c.planType === 'Monthly' ? Math.min(100, (c.monthsElapsed / 12) * 100) : 100;
+                  return (
+                    <tr key={c.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-gray-900">{c.name}</p>
+                        <p className="text-xs text-gray-500">{c.companyName}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`badge ${c.planType === 'Yearly' ? 'badge-zubkas' : 'badge-neutral'}`}>{c.planType}</span>
+                        <span className="text-xs text-gray-500 block mt-0.5">{c.planTier}</span>
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-600">{formatCurrencyFull(c.subscriptionAmount)}</td>
+                      <td className="px-4 py-3 text-right font-medium text-zubkas-700">{c.commissionRate}%</td>
+                      <td className="px-4 py-3 text-right">
+                        {c.status === 'Unpaid' ? (
+                          <span className="text-amber-600 font-medium line-through">{formatCurrency(monthlyAmt)}</span>
+                        ) : c.planType === 'Monthly' && c.remainingMonths === 0 ? (
+                          <span className="text-gray-400">Capped</span>
+                        ) : (
+                          <span className="font-medium text-gray-900">{formatCurrency(monthlyAmt)}</span>
                         )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {c.status === 'Unpaid' ? (
-                        <span className="badge badge-error"><AlertTriangle className="h-3 w-3" /> Blocked</span>
-                      ) : c.planType === 'Monthly' && c.remainingMonths === 0 ? (
-                        <span className="badge badge-neutral"><Clock className="h-3 w-3" /> Capped</span>
-                      ) : (
-                        <span className="badge badge-success">Earning</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatCurrency(c.commissionEarned)}</td>
+                      <td className="px-4 py-3">
+                        <div className="w-24 mx-auto">
+                          <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                            <div
+                              className={`h-2 rounded-full transition-all ${c.status === 'Unpaid' ? 'bg-amber-400' : progress >= 100 ? 'bg-gray-400' : 'bg-emerald-500'}`}
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                          {c.planType === 'Monthly' && (
+                            <p className="text-[10px] text-gray-400 text-center mt-1">{c.monthsElapsed}/12 mo</p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        {c.status === 'Unpaid' ? (
+                          <span className="badge badge-error"><AlertTriangle className="h-3 w-3" /> Blocked</span>
+                        ) : c.planType === 'Monthly' && c.remainingMonths === 0 ? (
+                          <span className="badge badge-neutral"><Clock className="h-3 w-3" /> Capped</span>
+                        ) : (
+                          <span className="badge badge-success">Earning</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -220,7 +320,7 @@ export function PartnerCommissions() {
             </div>
             <div>
               <h3 className="font-display font-semibold text-gray-900">Transaction History</h3>
-              <p className="text-xs text-gray-500">{myTransactions.length} commission transactions</p>
+              <p className="text-xs text-gray-500">{effectiveTransactions.length} commission transactions</p>
             </div>
           </div>
           <select value={txFilter} onChange={(e) => setTxFilter(e.target.value as typeof txFilter)} className="input-field sm:w-40">
@@ -231,7 +331,7 @@ export function PartnerCommissions() {
           </select>
         </div>
         {filteredTx.length === 0 ? (
-          <EmptyState icon={Wallet} title="No transactions found" message="Commission transactions will appear here" />
+          <EmptyState icon={Wallet} title="No transactions found" message="Commission transactions will appear here once leads are converted and payments are processed" />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -278,25 +378,29 @@ export function PartnerCommissions() {
       <div className="card p-6">
         <h3 className="font-display font-semibold text-gray-900 mb-4">Commission End Dates (1-Year Cap)</h3>
         <div className="space-y-2">
-          {myCustomers.map(c => (
-            <div key={c.id} className="flex items-center justify-between rounded-lg border border-gray-50 p-3">
-              <div className="flex items-center gap-3">
-                <Calendar className="h-4 w-4 text-gray-400" />
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{c.name}</p>
-                  <p className="text-xs text-gray-500">{c.companyName}</p>
+          {myCustomers.length === 0 ? (
+            <EmptyState icon={Calendar} title="No active subscriptions" message="Commission end dates will appear here once customers are onboarded" />
+          ) : (
+            myCustomers.map(c => (
+              <div key={c.id} className="flex items-center justify-between rounded-lg border border-gray-50 p-3">
+                <div className="flex items-center gap-3">
+                  <Calendar className="h-4 w-4 text-gray-400" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{c.name}</p>
+                    <p className="text-xs text-gray-500">{c.companyName}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-medium text-gray-900">{formatDate(c.commissionEndDate)}</p>
+                  <p className="text-xs text-gray-400">
+                    {c.planType === 'Monthly'
+                      ? c.remainingMonths > 0 ? `${c.remainingMonths} months remaining` : 'Cap reached'
+                      : 'One-time payout'}
+                  </p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">{formatDate(c.commissionEndDate)}</p>
-                <p className="text-xs text-gray-400">
-                  {c.planType === 'Monthly'
-                    ? c.remainingMonths > 0 ? `${c.remainingMonths} months remaining` : 'Cap reached'
-                    : 'One-time payout'}
-                </p>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </div>

@@ -333,9 +333,9 @@ export function AdminLeads() {
                       <td className="px-4 py-3 text-gray-600">{l.partnerName}</td>
                       <td className="px-4 py-3 text-gray-500 text-xs">{formatDate(l.submittedDate)}</td>
                       <td className="px-4 py-3 text-xs">
-                        {l.status === 'Converted' ? (
+                        {l.status === 'Converted' || l.paymentStatus === 'Paid' ? (
                           <span className="text-gray-400">—</span>
-                        ) : (l.status === 'Locked' || l.status === 'Approved') && lockDaysLeft > 0 ? (
+                        ) : (l.status === 'Locked' || l.status === 'Approved' || l.status === 'Pending Approval') && lockDaysLeft > 0 ? (
                           <span className="text-amber-600 font-medium">{lockDaysLeft}d left</span>
                         ) : (
                           <span className="text-gray-400">{formatDate(l.lockEndDate)}</span>

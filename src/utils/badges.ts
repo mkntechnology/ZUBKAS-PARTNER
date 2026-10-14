@@ -1,5 +1,6 @@
 import type { Partner, Customer, Lead, CommissionTransaction, Badge } from '@/types';
 import { formatCurrency } from './helpers';
+import { computeAllPartnerStats, partnerWithStats } from './partnerStats';
 
 export const BADGE_DEFINITIONS: Omit<Badge, 'id'>[] = [
   { name: 'Top Performer', icon: 'Crown', description: 'Highest monthly sales among all partners', color: 'text-amber-600' },
@@ -20,7 +21,11 @@ export function calculatePartnerBadge(
   transactions: CommissionTransaction[],
   allPartners: Partner[],
 ): string {
-  const now = new Date('2026-10-10');
+  const statsMap = computeAllPartnerStats(allPartners, customers, leads, transactions);
+  const statsPartners = allPartners.map(p => partnerWithStats(p, statsMap));
+  const statsPartner = partnerWithStats(partner, statsMap);
+
+  const now = new Date();
   const joinedDate = new Date(partner.joinedDate);
   const monthsSinceJoin = (now.getFullYear() - joinedDate.getFullYear()) * 12 + (now.getMonth() - joinedDate.getMonth());
 
@@ -31,19 +36,19 @@ export function calculatePartnerBadge(
   const isNewWithin12 = monthsSinceJoin <= 12;
   const isLeadMaster = convertedLeads >= 10;
 
-  const topBySales = [...allPartners].sort((a, b) => b.monthlySales - a.monthlySales)[0];
-  const isTopPerformer = allPartners.length > 0 && topBySales?.id === partner.id && partner.monthlySales > 0;
+  const topBySales = [...statsPartners].sort((a, b) => b.monthlySales - a.monthlySales)[0];
+  const isTopPerformer = statsPartners.length > 0 && topBySales?.id === partner.id && statsPartner.monthlySales > 0;
 
-  const top3BySales = [...allPartners].sort((a, b) => b.monthlySales - a.monthlySales).slice(0, 3);
-  const isRisingStar = top3BySales.some(p => p.id === partner.id) && partner.monthlySales > 0 && !isTopPerformer;
+  const top3BySales = [...statsPartners].sort((a, b) => b.monthlySales - a.monthlySales).slice(0, 3);
+  const isRisingStar = top3BySales.some(p => p.id === partner.id) && statsPartner.monthlySales > 0 && !isTopPerformer;
 
-  const newPartners = allPartners.filter(p => {
+  const newPartners = statsPartners.filter(p => {
     const j = new Date(p.joinedDate);
     const ms = (now.getFullYear() - j.getFullYear()) * 12 + (now.getMonth() - j.getMonth());
     return ms <= 12;
   });
   const topNew = [...newPartners].sort((a, b) => b.monthlyCommission - a.monthlyCommission)[0];
-  const isNewChampion = newPartners.length > 0 && topNew?.id === partner.id && partner.monthlyCommission > 0;
+  const isNewChampion = newPartners.length > 0 && topNew?.id === partner.id && statsPartner.monthlyCommission > 0;
 
   if (isLeadMaster) return 'Lead Master';
   if (isTopPerformer) return 'Top Performer';
@@ -69,7 +74,10 @@ export function calculateLeaderboard(
 ): LeaderboardSection[] {
   const sections: LeaderboardSection[] = [];
 
-  const monthlyTop = [...partners]
+  const statsMap = computeAllPartnerStats(partners, customers, leads, transactions);
+  const statsPartners = partners.map(p => partnerWithStats(p, statsMap));
+
+  const monthlyTop = [...statsPartners]
     .filter(p => p.monthlySales > 0)
     .sort((a, b) => b.monthlySales - a.monthlySales)
     .slice(0, 10)
@@ -100,8 +108,8 @@ export function calculateLeaderboard(
     }));
   sections.push({ key: 'highestSales', title: 'Most Active Customers', subtitle: 'Partners with most active customers', iconName: 'TrendingUp', entries: highestSales });
 
-  const now = new Date('2026-10-10');
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const now2 = new Date();
+  const monthStart = new Date(now2.getFullYear(), now2.getMonth(), 1);
   const mostActive = [...partners]
     .map(p => {
       const count = leads.filter(l => l.partnerId === p.id && new Date(l.submittedDate) >= monthStart).length;
@@ -121,10 +129,10 @@ export function calculateLeaderboard(
     }));
   sections.push({ key: 'mostActive', title: 'Most Active Partners', subtitle: 'Most leads submitted this month', iconName: 'Target', entries: mostActive });
 
-  const newChampion = partners
+  const newChampion = statsPartners
     .filter(p => {
       const j = new Date(p.joinedDate);
-      const ms = (now.getFullYear() - j.getFullYear()) * 12 + (now.getMonth() - j.getMonth());
+      const ms = (now2.getFullYear() - j.getFullYear()) * 12 + (now2.getMonth() - j.getMonth());
       return ms <= 12 && p.monthlyCommission > 0;
     })
     .sort((a, b) => b.monthlyCommission - a.monthlyCommission)

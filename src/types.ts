@@ -59,7 +59,6 @@ export interface Customer {
   commissionEndDate: string;
   monthsElapsed: number;
   remainingMonths: number;
-  leadId?: string;
 }
 
 export type LeadPaymentStatus = 'Paid' | 'Unpaid';

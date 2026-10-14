@@ -593,48 +593,66 @@ export function AppProvider({ children }: { children: ReactNode }) {
     leadsHook.updateRow(id, { status });
   }, [leadsHook]);
 
-  const approveLead: AppContextValue['approveLead'] = useCallback((id, details) => {
+  const approveLead: AppContextValue['approveLead'] = useCallback(async (id, details) => {
     const today = new Date().toISOString().split('T')[0];
     const lockEnd = new Date();
     lockEnd.setDate(lockEnd.getDate() + settingsState.leadLockDays);
     const lockEndDate = lockEnd.toISOString().split('T')[0];
-    leadsHook.updateRow(id, {
-      status: 'Approved', lockEndDate,
-      productId: details.productId, productName: details.productName,
-      planType: details.planType, planPrice: details.planPrice,
-      commissionRate: details.commissionRate,
-    });
     const lead = leads.find(l => l.id === id);
-    if (lead) {
-      notificationsHook.insertRow({
-        id: '', userId: lead.partnerId,
-        title: 'Lead Approved',
-        message: `Your lead "${lead.companyName}" has been approved and locked for ${settingsState.leadLockDays} days. Convert it before the lock expires.`,
-        type: 'lead', date: today, read: false,
+    try {
+      await leadsHook.updateRow(id, {
+        status: 'Approved', lockEndDate,
+        productId: details.productId, productName: details.productName,
+        planType: details.planType, planPrice: details.planPrice,
+        commissionRate: details.commissionRate,
       });
+    } catch (e) {
+      console.error('Failed to approve lead:', e);
+      return;
+    }
+    if (lead) {
+      try {
+        await notificationsHook.insertRow({
+          id: '', userId: lead.partnerId,
+          title: 'Lead Approved',
+          message: `Your lead "${lead.companyName}" has been approved and locked for ${settingsState.leadLockDays} days. Convert it before the lock expires.`,
+          type: 'lead', date: today, read: false,
+        });
+      } catch (e) {
+        console.error('Failed to send approval notification:', e);
+      }
     }
   }, [leads, settingsState.leadLockDays, leadsHook, notificationsHook]);
 
-  const updateLeadPayment: AppContextValue['updateLeadPayment'] = useCallback((id, details) => {
+  const updateLeadPayment: AppContextValue['updateLeadPayment'] = useCallback(async (id, details) => {
     const lead = leads.find(l => l.id === id);
     const today = new Date().toISOString().split('T')[0];
     const isPaid = details.paymentStatus === 'Paid';
 
-    leadsHook.updateRow(id, {
-      status: isPaid ? 'Converted' : 'Locked',
-      paymentStatus: details.paymentStatus,
-      planPrice: details.planPrice, commissionRate: details.commissionRate,
-      renewalDate: details.renewalDate,
-    });
-
-    const linkedCustomer = customers.find(c => c.leadId === id);
-    if (linkedCustomer) {
-      customersHook.updateRow(linkedCustomer.id, {
-        status: isPaid ? 'Active' : 'Unpaid',
-        commissionRate: details.commissionRate,
-        subscriptionAmount: details.planPrice,
+    try {
+      await leadsHook.updateRow(id, {
+        status: isPaid ? 'Converted' : 'Locked',
+        paymentStatus: details.paymentStatus,
+        planPrice: details.planPrice, commissionRate: details.commissionRate,
         renewalDate: details.renewalDate,
       });
+    } catch (e) {
+      console.error('Failed to update lead payment:', e);
+      return;
+    }
+
+    const linkedCustomer = lead ? customers.find(c => c.email === lead.email || (c.companyName === lead.companyName && c.partnerId === lead.partnerId)) : undefined;
+    if (linkedCustomer) {
+      try {
+        await customersHook.updateRow(linkedCustomer.id, {
+          status: isPaid ? 'Active' : 'Unpaid',
+          commissionRate: details.commissionRate,
+          subscriptionAmount: details.planPrice,
+          renewalDate: details.renewalDate,
+        });
+      } catch (e) {
+        console.error('Failed to update linked customer:', e);
+      }
     } else if (isPaid && lead) {
       const renewalDate = details.renewalDate ?? (lead.planType === 'Yearly'
         ? new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]
@@ -650,26 +668,53 @@ export function AppProvider({ children }: { children: ReactNode }) {
         startDate: today, renewalDate,
         status: 'Active',
         commissionEarned: 0, commissionEndDate,
-        monthsElapsed: 0, remainingMonths: 12, leadId: lead.id,
+        monthsElapsed: 0, remainingMonths: 12,
       };
-      customersHook.insertRow(newCustomer);
+      try {
+        await customersHook.upsertRow(newCustomer);
+      } catch (e) {
+        console.error('Failed to create customer from lead:', e);
+      }
     }
 
     if (lead) {
-      notificationsHook.insertRow({
-        id: '', userId: lead.partnerId,
-        title: isPaid ? 'Payment Confirmed — Lead Converted' : 'Payment Marked Unpaid',
-        message: isPaid
-          ? `Payment for lead "${lead.companyName}" has been confirmed and the lead has been converted to a customer.`
-          : `Payment for lead "${lead.companyName}" has been marked as Unpaid. Commissions are paused until payment is confirmed.`,
-        type: 'payment', date: today, read: false,
-      });
+      try {
+        await notificationsHook.insertRow({
+          id: '', userId: lead.partnerId,
+          title: isPaid ? 'Payment Confirmed — Lead Converted' : 'Payment Marked Unpaid',
+          message: isPaid
+            ? `Payment for lead "${lead.companyName}" has been confirmed and the lead has been converted to a customer.`
+            : `Payment for lead "${lead.companyName}" has been marked as Unpaid. Commissions are paused until payment is confirmed.`,
+          type: 'payment', date: today, read: false,
+        });
+      } catch (e) {
+        console.error('Failed to send payment notification:', e);
+      }
     }
   }, [leads, customers, leadsHook, customersHook, notificationsHook]);
 
-  const convertLead: AppContextValue['convertLead'] = useCallback((id) => {
+  const convertLead: AppContextValue['convertLead'] = useCallback(async (id) => {
     const lead = leads.find(l => l.id === id);
     if (!lead) return;
+    // Guard: don't create a duplicate customer if one already exists for this lead
+    const existing = customers.find(c => c.email === lead.email || (c.companyName === lead.companyName && c.partnerId === lead.partnerId));
+    if (existing) {
+      try {
+        await customersHook.updateRow(existing.id, {
+          status: lead.paymentStatus === 'Paid' ? 'Active' : 'Unpaid',
+          commissionRate: lead.commissionRate ?? existing.commissionRate,
+          subscriptionAmount: lead.planPrice ?? existing.subscriptionAmount,
+        });
+      } catch (e) {
+        console.error('Failed to update existing customer:', e);
+      }
+      try {
+        await leadsHook.updateRow(id, { status: 'Converted' });
+      } catch (e) {
+        console.error('Failed to mark lead as Converted:', e);
+      }
+      return;
+    }
     const today = new Date().toISOString().split('T')[0];
     const renewalDate = lead.renewalDate ?? (lead.planType === 'Yearly'
       ? new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]
@@ -685,27 +730,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
       startDate: today, renewalDate,
       status: lead.paymentStatus === 'Paid' ? 'Active' : 'Unpaid',
       commissionEarned: 0, commissionEndDate,
-      monthsElapsed: 0, remainingMonths: 12, leadId: lead.id,
+      monthsElapsed: 0, remainingMonths: 12,
     };
-    customersHook.insertRow(newCustomer);
-    leadsHook.updateRow(id, { status: 'Converted' });
-    notificationsHook.insertRow({
-      id: '', userId: lead.partnerId,
-      title: 'Lead Converted',
-      message: `Your lead "${lead.companyName}" has been converted to a customer.`,
-      type: 'lead', date: today, read: false,
-    });
-  }, [leads, customersHook, leadsHook, notificationsHook]);
+    try {
+      await customersHook.upsertRow(newCustomer);
+    } catch (e) {
+      console.error('Failed to create customer from converted lead:', e);
+      return;
+    }
+    try {
+      await leadsHook.updateRow(id, { status: 'Converted' });
+    } catch (e) {
+      console.error('Failed to mark lead as Converted:', e);
+    }
+    try {
+      await notificationsHook.insertRow({
+        id: '', userId: lead.partnerId,
+        title: 'Lead Converted',
+        message: `Your lead "${lead.companyName}" has been converted to a customer.`,
+        type: 'lead', date: today, read: false,
+      });
+    } catch (e) {
+      console.error('Failed to send conversion notification:', e);
+    }
+  }, [leads, customers, customersHook, leadsHook, notificationsHook]);
 
   const adminAddLead: AppContextValue['adminAddLead'] = useCallback((l) => {
     const partner = l.partnerId === 'none' ? null : partners.find(p => p.id === l.partnerId);
     const today = new Date().toISOString().split('T')[0];
+    const lockEnd = new Date();
+    lockEnd.setDate(lockEnd.getDate() + settingsState.leadLockDays);
+    const lockEndDate = lockEnd.toISOString().split('T')[0];
     const newLead: Lead = {
       id: '', partnerId: l.partnerId,
       partnerName: partner?.name ?? 'Admin (Direct)',
       companyName: l.companyName, contactName: l.contactName,
       email: l.email, phone: l.phone, whatsapp: l.whatsapp,
-      status: 'Open', submittedDate: today, lockEndDate: today,
+      status: 'Locked', submittedDate: today, lockEndDate,
       notes: l.notes, productId: l.productId, productName: l.productName,
       planType: l.planType,
     };
@@ -718,25 +779,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
         type: 'lead', date: today, read: false,
       });
     }
-  }, [partners, leadsHook, notificationsHook]);
+  }, [partners, settingsState.leadLockDays, leadsHook, notificationsHook]);
 
   const addLead: AppContextValue['addLead'] = useCallback((l) => {
+    const now = new Date();
     const existing = leads.find(
       ld => ld.companyName.toLowerCase() === l.companyName.toLowerCase() &&
-        (ld.status === 'Locked' || ld.status === 'Approved' || ld.status === 'Pending Approval') &&
-        ld.partnerId !== l.partnerId
+        ld.partnerId !== l.partnerId &&
+        new Date(ld.lockEndDate) > now
     );
     if (existing) return false;
     const partner = partners.find(p => p.id === l.partnerId);
     const today = new Date().toISOString().split('T')[0];
+    const lockEnd = new Date();
+    lockEnd.setDate(lockEnd.getDate() + settingsState.leadLockDays);
+    const lockEndDate = lockEnd.toISOString().split('T')[0];
     const newLead: Lead = {
       ...l, id: '',
-      status: 'Pending Approval', submittedDate: today, lockEndDate: today,
+      status: 'Pending Approval', submittedDate: today, lockEndDate,
       partnerName: partner?.name ?? 'Unknown',
     };
     leadsHook.insertRow(newLead);
     return true;
-  }, [leads, partners, leadsHook]);
+  }, [leads, partners, settingsState.leadLockDays, leadsHook]);
 
   // ===== CUSTOMERS =====
   const addCustomer: AppContextValue['addCustomer'] = useCallback((c) => {
@@ -751,8 +816,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ...c, id: '',
       commissionEarned: 0, commissionEndDate, monthsElapsed, remainingMonths,
     };
-    customersHook.insertRow(newCustomer);
-  }, [customersHook]);
+    const existing = customers.find(cu => cu.email === c.email);
+    if (existing) {
+      customersHook.updateRow(existing.id, { ...c, commissionEndDate, monthsElapsed, remainingMonths });
+    } else {
+      customersHook.insertRow(newCustomer);
+    }
+  }, [customers, customersHook]);
 
   const deleteCustomer: AppContextValue['deleteCustomer'] = useCallback((id) => {
     customersHook.deleteRow(id);
