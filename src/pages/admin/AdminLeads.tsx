@@ -675,22 +675,21 @@ export function AdminLeads() {
           )}
 
           {/* Customer Selection */}
-          {customers.length > 0 && (
-            <div>
-              <label className="text-sm font-medium text-gray-700">Select Existing Customer <span className="text-gray-400 font-normal">(optional)</span></label>
-              <select
-                value={selectedCustomerId}
-                onChange={(e) => handleCustomerSelect(e.target.value)}
-                className="input-field mt-1"
-              >
-                <option value="">— Enter manually instead —</option>
-                {customers.map(c => (
-                  <option key={c.id} value={c.id}>{c.name} ({c.companyName})</option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-400 mt-1">Selecting a customer auto-fills company, contact, email, phone, and WhatsApp fields.</p>
-            </div>
-          )}
+          <div>
+            <label className="text-sm font-medium text-gray-700">Select Existing Customer <span className="text-gray-400 font-normal">(optional)</span></label>
+            <select
+              value={selectedCustomerId}
+              onChange={(e) => handleCustomerSelect(e.target.value)}
+              className="input-field mt-1"
+              disabled={customers.length === 0}
+            >
+              <option value="">{customers.length === 0 ? '— No customers available —' : '— Enter manually instead —'}</option>
+              {customers.map(c => (
+                <option key={c.id} value={c.id}>{c.name} ({c.companyName})</option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-400 mt-1">Selecting a customer auto-fills company, contact, email, phone, and WhatsApp fields.</p>
+          </div>
 
           {/* Partner Selection */}
           <div>

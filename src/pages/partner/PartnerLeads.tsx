@@ -266,22 +266,21 @@ export function PartnerLeads() {
           {error && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 flex items-start gap-2"><AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />{error}</div>}
           {success && <div className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-600 flex items-start gap-2"><CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />{success}</div>}
 
-          {myCustomers.length > 0 && (
-            <div>
-              <label className="text-sm font-medium text-gray-700">Select Existing Customer <span className="text-gray-400 font-normal">(optional)</span></label>
-              <select
-                value={form.customerId}
-                onChange={(e) => handleCustomerSelect(e.target.value)}
-                className="input-field mt-1"
-              >
-                <option value="">— Enter manually instead —</option>
-                {myCustomers.map(c => (
-                  <option key={c.id} value={c.id}>{c.name} ({c.companyName})</option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-400 mt-1">Selecting a customer auto-fills company, contact, email, phone, and WhatsApp fields.</p>
-            </div>
-          )}
+          <div>
+            <label className="text-sm font-medium text-gray-700">Select Existing Customer <span className="text-gray-400 font-normal">(optional)</span></label>
+            <select
+              value={form.customerId}
+              onChange={(e) => handleCustomerSelect(e.target.value)}
+              className="input-field mt-1"
+              disabled={myCustomers.length === 0}
+            >
+              <option value="">{myCustomers.length === 0 ? '— No customers available —' : '— Enter manually instead —'}</option>
+              {myCustomers.map(c => (
+                <option key={c.id} value={c.id}>{c.name} ({c.companyName})</option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-400 mt-1">Selecting a customer auto-fills company, contact, email, phone, and WhatsApp fields.</p>
+          </div>
 
           <div className="border-t border-gray-100 pt-4 space-y-4">
             <div>

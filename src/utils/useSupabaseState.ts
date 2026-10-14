@@ -87,6 +87,10 @@ export function useSupabaseCollection<T extends { id: string }>(
     const snake = toSnakeRow(row as unknown as Row);
     // Omit empty/falsy id so the database can auto-generate it (e.g. UUID default)
     if (!snake.id) delete snake.id;
+    // Omit undefined and empty-string values so DB defaults / NULL apply for nullable columns
+    for (const key of Object.keys(snake)) {
+      if (snake[key] === undefined || snake[key] === '') delete snake[key];
+    }
     const { data, error } = await supabase.from(table).insert(snake).select();
     if (error) throw new Error(error.message);
     // Use the actual inserted row (with DB-generated id) for the state update
@@ -102,6 +106,10 @@ export function useSupabaseCollection<T extends { id: string }>(
 
   const updateRow = useCallback(async (id: string, updates: Partial<T>) => {
     const snake = toSnakeRow(updates as unknown as Row);
+    // Omit undefined and empty-string values so DB defaults / NULL apply for nullable columns
+    for (const key of Object.keys(snake)) {
+      if (snake[key] === undefined || snake[key] === '') delete snake[key];
+    }
     await supabase.from(table).update(snake).eq('id', id);
     setState(prev => prev.map(r => (r.id === id ? { ...r, ...updates } : r)));
   }, [table]);
@@ -113,6 +121,12 @@ export function useSupabaseCollection<T extends { id: string }>(
 
   const upsertRow = useCallback(async (row: T) => {
     const snake = toSnakeRow(row as unknown as Row);
+    // Omit empty/falsy id so the database can auto-generate it
+    if (!snake.id) delete snake.id;
+    // Omit undefined and empty-string values so DB defaults / NULL apply for nullable columns
+    for (const key of Object.keys(snake)) {
+      if (snake[key] === undefined || snake[key] === '') delete snake[key];
+    }
     await supabase.from(table).upsert(snake, { onConflict: 'id' });
     setState(prev => {
       const idx = prev.findIndex(r => r.id === row.id);
@@ -129,7 +143,14 @@ export function useSupabaseCollection<T extends { id: string }>(
     // Delete all existing rows, then insert the new set
     await supabase.from(table).delete().neq('id', '___impossible___');
     if (rows.length > 0) {
-      const snakeRows = rows.map(r => toSnakeRow(r as unknown as Row));
+      const snakeRows = rows.map(r => {
+        const snake = toSnakeRow(r as unknown as Row);
+        if (!snake.id) delete snake.id;
+        for (const key of Object.keys(snake)) {
+          if (snake[key] === undefined || snake[key] === '') delete snake[key];
+        }
+        return snake;
+      });
       await supabase.from(table).insert(snakeRows);
     }
     setState(rows);

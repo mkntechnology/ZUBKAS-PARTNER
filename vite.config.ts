@@ -9,7 +9,6 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['assets/icons/zubkas_icon_hd_new.png', 'assets/icons/zubkas_icon_hd_white.png'],
       manifest: {
         name: 'Zubkas Partner Program',
         short_name: 'Zubkas',
@@ -36,7 +35,17 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        globPatterns: ['**/*.{js,css,html,ico,svg,woff2}'],
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => url.pathname.endsWith('.png'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'icon-cache',
+              expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 30 },
+            },
+          },
+        ],
       },
     }),
   ],
