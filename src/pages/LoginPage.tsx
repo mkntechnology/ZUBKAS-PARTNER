@@ -1,25 +1,21 @@
 import { useState } from 'react';
-import { Mail, Lock, ArrowRight, Shield, User, KeyRound, Sparkles, Eye, EyeOff, ArrowLeft, CircleCheck as CheckCircle2, TrendingUp, Users, DollarSign, Crown, Download } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Shield, User, Sparkles, Eye, EyeOff, ArrowLeft, CircleCheck as CheckCircle2, TrendingUp, Users, DollarSign, Crown, Download } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { usePWAInstall } from '@/utils/usePWAInstall';
 
 type LoginMode = 'partner' | 'admin';
-type AuthMethod = 'password' | 'otp';
 
 interface LoginPageProps {
   onBack: () => void;
 }
 
 export function LoginPage({ onBack }: LoginPageProps) {
-  const { login, loginOtp, partnerUsers, siteContent: c } = useApp();
+  const { login, partnerUsers, siteContent: c } = useApp();
   const { canInstall, isInstalled, promptInstall } = usePWAInstall();
   const [mode, setMode] = useState<LoginMode>('partner');
-  const [authMethod, setAuthMethod] = useState<AuthMethod>('password');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -66,43 +62,10 @@ export function LoginPage({ onBack }: LoginPageProps) {
     setLoading(false);
   };
 
-  const handleSendOtp = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    if (!validateMode(email)) return;
-    setLoading(true);
-    setTimeout(() => {
-      const allEmails = [...partnerEmails, ...adminEmails];
-      if (allEmails.includes(email.toLowerCase())) {
-        setOtpSent(true);
-      } else {
-        setError('No account found with this email.');
-      }
-      setLoading(false);
-    }, 500);
-  };
-
-  const handleVerifyOtp = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    setTimeout(() => {
-      if (otp.length === 6) {
-        const success = loginOtp(email);
-        if (!success) setError('Verification failed. Please try again.');
-      } else {
-        setError('Please enter the 6-digit code.');
-      }
-      setLoading(false);
-    }, 500);
-  };
-
   const switchMode = (newMode: LoginMode) => {
     setMode(newMode);
     setEmail('');
     setPassword('');
-    setOtp('');
-    setOtpSent(false);
     setError('');
   };
 
@@ -222,126 +185,54 @@ export function LoginPage({ onBack }: LoginPageProps) {
               {mode === 'partner' ? c.loginPartnerSubtitle : c.loginAdminSubtitle}
             </p>
 
-            {/* Auth method toggle */}
-            <div className="mt-6 flex gap-4 border-b border-gray-100">
-              <button
-                onClick={() => { setAuthMethod('password'); setError(''); setOtpSent(false); }}
-                className={`flex items-center gap-1.5 border-b-2 px-1 pb-2.5 text-sm font-medium transition-colors ${authMethod === 'password' ? 'border-zubkas-700 text-zubkas-700' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
-              >
-                <Lock className="h-3.5 w-3.5" />
-                {c.loginMethodPassword}
-              </button>
-              <button
-                onClick={() => { setAuthMethod('otp'); setError(''); setOtpSent(false); }}
-                className={`flex items-center gap-1.5 border-b-2 px-1 pb-2.5 text-sm font-medium transition-colors ${authMethod === 'otp' ? 'border-zubkas-700 text-zubkas-700' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
-              >
-                <KeyRound className="h-3.5 w-3.5" />
-                {c.loginMethodOtp}
-              </button>
-            </div>
-
             {error && (
               <div className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 animate-fade-in">
                 {error}
               </div>
             )}
 
-            {/* Password form */}
-            {authMethod === 'password' && (
-              <form onSubmit={handlePasswordLogin} className="mt-6 space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-700">{c.loginEmailLabel}</label>
-                  <div className="relative mt-1.5">
-                    <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@zubkas.com"
-                      className="w-full rounded-xl border border-gray-200 bg-white/80 py-3 pl-10 pr-3 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all focus:border-zubkas-700 focus:ring-4 focus:ring-zubkas-700/10"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700">{c.loginPasswordLabel}</label>
-                  <div className="relative mt-1.5">
-                    <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full rounded-xl border border-gray-200 bg-white/80 py-3 pl-10 pr-10 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all focus:border-zubkas-700 focus:ring-4 focus:ring-zubkas-700/10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-                <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-base">
-                  {loading ? 'Signing in...' : c.loginSignInButton}
-                  {!loading && <ArrowRight className="h-4 w-4" />}
-                </button>
-              </form>
-            )}
-
-            {/* OTP form */}
-            {authMethod === 'otp' && !otpSent && (
-              <form onSubmit={handleSendOtp} className="mt-6 space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-700">{c.loginEmailLabel}</label>
-                  <div className="relative mt-1.5">
-                    <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@zubkas.com"
-                      className="w-full rounded-xl border border-gray-200 bg-white/80 py-3 pl-10 pr-3 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all focus:border-zubkas-700 focus:ring-4 focus:ring-zubkas-700/10"
-                    />
-                  </div>
-                </div>
-                <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-base">
-                  {loading ? 'Sending...' : c.loginSendOtpButton}
-                  {!loading && <ArrowRight className="h-4 w-4" />}
-                </button>
-              </form>
-            )}
-
-            {authMethod === 'otp' && otpSent && (
-              <form onSubmit={handleVerifyOtp} className="mt-6 space-y-4">
-                <div className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700 flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 shrink-0" />
-                  {c.loginOtpSentPrefix} {email}. {c.loginOtpSentSuffix}
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700">{c.loginOtpLabel}</label>
+            {/* Password login form */}
+            <form onSubmit={handlePasswordLogin} className="mt-6 space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700">{c.loginEmailLabel}</label>
+                <div className="relative mt-1.5">
+                  <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <input
-                    type="text"
+                    type="email"
                     required
-                    maxLength={6}
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                    placeholder="123456"
-                    className="mt-1.5 w-full rounded-xl border border-gray-200 bg-white/80 px-3 py-3.5 text-center text-2xl font-bold tracking-[0.5em] text-gray-900 outline-none transition-all focus:border-zubkas-700 focus:ring-4 focus:ring-zubkas-700/10"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@zubkas.com"
+                    className="w-full rounded-xl border border-gray-200 bg-white/80 py-3 pl-10 pr-3 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all focus:border-zubkas-700 focus:ring-4 focus:ring-zubkas-700/10"
                   />
                 </div>
-                <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-base">
-                  {loading ? 'Verifying...' : c.loginVerifyButton}
-                  {!loading && <ArrowRight className="h-4 w-4" />}
-                </button>
-                <button type="button" onClick={() => setOtpSent(false)} className="btn-ghost w-full">
-                  {c.loginChangeEmailButton}
-                </button>
-              </form>
-            )}
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">{c.loginPasswordLabel}</label>
+                <div className="relative mt-1.5">
+                  <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full rounded-xl border border-gray-200 bg-white/80 py-3 pl-10 pr-10 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all focus:border-zubkas-700 focus:ring-4 focus:ring-zubkas-700/10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+              <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-base">
+                {loading ? 'Signing in...' : c.loginSignInButton}
+                {!loading && <ArrowRight className="h-4 w-4" />}
+              </button>
+            </form>
 
           </div>
 
