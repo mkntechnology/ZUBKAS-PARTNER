@@ -6,24 +6,9 @@ interface LandingPageProps {
   onSignIn: () => void;
 }
 
-const features = [
-  { icon: DollarSign, title: 'Up to 15% Recurring Commission', desc: 'Earn commission every month on every subscription you refer — Free Plan (5%) or Premium Plan (15%).' },
-  { icon: Lock, title: '1-Year Cap Protection', desc: 'Commissions run for a full 12 months from each subscription start date. Track remaining months in real-time.' },
-  { icon: Shield, title: 'Lead Lock Security', desc: 'When you register a lead, the company is locked for 3-5 days. No other partner can claim the same company.' },
-  { icon: BarChart3, title: 'Real-Time Dashboard', desc: 'Monitor active customers, monthly sales, pending commissions, and top performance — all in one place.' },
-  { icon: Target, title: 'Lead Management', desc: 'Submit, track, and convert leads with status tracking: Locked, Open, Converted, or Lost.' },
-  { icon: Crown, title: 'Leaderboard & Badges', desc: 'Compete with fellow partners and earn badges: Top Performer, Rising Star, Consistent Earner, New Champion.' },
-];
-
 const landingIconMap: Record<string, typeof Package> = {
   Briefcase, BarChart3, HardHat, CreditCard, Wallet, Users, Sparkles, Package,
 };
-
-const trustBadges = [
-  { icon: TrendingUp, label: '15% Recurring Commission', sub: 'On Premium plans' },
-  { icon: Lock, label: '1-Year Cap Protection', sub: '12 months guaranteed' },
-  { icon: Shield, label: 'Lead Lock Security', sub: '3-5 day exclusivity' },
-];
 
 export function LandingPage({ onSignIn }: LandingPageProps) {
   const { siteContent: c, products: ctxProducts } = useApp();
@@ -37,11 +22,39 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
       desc: p.description,
     }));
 
+  const features = [
+    { icon: DollarSign, title: c.landingFeature1Title, desc: c.landingFeature1Desc },
+    { icon: Lock, title: c.landingFeature2Title, desc: c.landingFeature2Desc },
+    { icon: Shield, title: c.landingFeature3Title, desc: c.landingFeature3Desc },
+    { icon: BarChart3, title: c.landingFeature4Title, desc: c.landingFeature4Desc },
+    { icon: Target, title: c.landingFeature5Title, desc: c.landingFeature5Desc },
+    { icon: Crown, title: c.landingFeature6Title, desc: c.landingFeature6Desc },
+  ];
+
+  const trustBadges = [
+    { icon: TrendingUp, label: c.landingTrust1Label, sub: c.landingTrust1Sub },
+    { icon: Lock, label: c.landingTrust2Label, sub: c.landingTrust2Sub },
+    { icon: Shield, label: c.landingTrust3Label, sub: c.landingTrust3Sub },
+  ];
+
   const stats = [
     { value: c.landingStat1Value, label: c.landingStat1Label },
     { value: c.landingStat2Value, label: c.landingStat2Label },
     { value: c.landingStat3Value, label: c.landingStat3Label },
     { value: c.landingStat4Value, label: c.landingStat4Label },
+  ];
+
+  const earningsBullets = [
+    c.landingEarningsBullet1,
+    c.landingEarningsBullet2,
+    c.landingEarningsBullet3,
+    c.landingEarningsBullet4,
+  ];
+
+  const steps = [
+    { step: '01', icon: Layers, title: c.landingStep1Title, desc: c.landingStep1Desc },
+    { step: '02', icon: Target, title: c.landingStep2Title, desc: c.landingStep2Desc },
+    { step: '03', icon: DollarSign, title: c.landingStep3Title, desc: c.landingStep3Desc },
   ];
 
   return (
@@ -71,7 +84,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
             <a href="#how-it-works" className="text-sm font-medium text-gray-600 hover:text-zubkas-700 transition-colors">How It Works</a>
           </div>
           <button onClick={onSignIn} className="btn-primary">
-            Sign In
+            {c.landingNavSignIn}
             <ArrowRight className="h-4 w-4" />
           </button>
         </div>
@@ -169,7 +182,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
       <section id="features" className="px-6 py-20">
         <div className="mx-auto max-w-7xl">
           <div className="text-center">
-            <p className="text-sm font-semibold uppercase tracking-wider text-zubkas-700">Features</p>
+            <p className="text-sm font-semibold uppercase tracking-wider text-zubkas-700">{c.landingFeaturesLabel}</p>
             <h2 className="mt-2 font-display text-3xl font-bold text-gray-900 sm:text-4xl">
               {c.landingFeaturesHeading}
             </h2>
@@ -202,7 +215,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
         <div className="mx-auto max-w-7xl">
           <div className="grid items-center gap-12 lg:grid-cols-2">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-wider text-zubkas-700">Real-Time Earnings</p>
+              <p className="text-sm font-semibold uppercase tracking-wider text-zubkas-700">{c.landingEarningsLabel}</p>
               <h2 className="mt-2 font-display text-3xl font-bold text-gray-900 sm:text-4xl">
                 {c.landingEarningsHeading}
               </h2>
@@ -210,15 +223,10 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
                 {c.landingEarningsDesc}
               </p>
               <div className="mt-6 space-y-3">
-                {[
-                  { icon: CheckCircle2, text: 'Automatic commission calculation on every subscription' },
-                  { icon: CheckCircle2, text: 'Monthly breakdown chart with 6-month history' },
-                  { icon: CheckCircle2, text: 'Unpaid subscription alerts with blocked commission tracking' },
-                  { icon: CheckCircle2, text: 'Commission end dates with remaining months countdown' },
-                ].map((item, i) => (
+                {earningsBullets.map((text, i) => (
                   <div key={i} className="flex items-center gap-3">
-                    <item.icon className="h-5 w-5 text-emerald-500 shrink-0" />
-                    <span className="text-sm text-gray-700">{item.text}</span>
+                    <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
+                    <span className="text-sm text-gray-700">{text}</span>
                   </div>
                 ))}
               </div>
@@ -229,15 +237,15 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
               {/* Card 1 - Monthly commission */}
               <div className="absolute left-0 top-0 w-72 rounded-2xl border border-gray-100 bg-white p-5 shadow-xl animate-slide-up" style={{ animationDelay: '100ms' }}>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-gray-500">Monthly Commission</span>
+                  <span className="text-xs font-medium text-gray-500">{c.landingCard1Label}</span>
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50">
                     <DollarSign className="h-4 w-4 text-emerald-600" />
                   </div>
                 </div>
-                <p className="mt-2 font-display text-3xl font-bold text-gray-900">₹42,000</p>
+                <p className="mt-2 font-display text-3xl font-bold text-gray-900">{c.landingCard1Value}</p>
                 <div className="mt-3 flex items-center gap-1 text-xs font-medium text-emerald-600">
                   <TrendingUp className="h-3 w-3" />
-                  +12.5% vs last month
+                  {c.landingCard1Trend}
                 </div>
                 <div className="mt-3 h-2 rounded-full bg-gray-100">
                   <div className="h-2 rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600" style={{ width: '72%' }} />
@@ -248,11 +256,11 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
               <div className="absolute right-0 top-24 w-64 rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-5 shadow-xl animate-slide-up" style={{ animationDelay: '200ms' }}>
                 <div className="flex items-center gap-2">
                   <Crown className="h-5 w-5 text-amber-500" />
-                  <span className="text-sm font-semibold text-gray-900">Top Performer</span>
+                  <span className="text-sm font-semibold text-gray-900">{c.landingCard2Title}</span>
                 </div>
-                <p className="mt-2 text-xs text-gray-500">Vikram Singh</p>
-                <p className="font-display text-2xl font-bold text-gray-900">₹8.4L</p>
-                <p className="text-xs text-gray-400">Monthly sales</p>
+                <p className="mt-2 text-xs text-gray-500">{c.landingCard2Name}</p>
+                <p className="font-display text-2xl font-bold text-gray-900">{c.landingCard2Value}</p>
+                <p className="text-xs text-gray-400">{c.landingCard2Sub}</p>
               </div>
 
               {/* Card 3 - Active customers */}
@@ -261,24 +269,24 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zubkas-50">
                     <Users className="h-4 w-4 text-zubkas-700" />
                   </div>
-                  <span className="text-xs font-medium text-gray-500">Active Customers</span>
+                  <span className="text-xs font-medium text-gray-500">{c.landingCard3Label}</span>
                 </div>
-                <p className="mt-2 font-display text-2xl font-bold text-gray-900">28</p>
+                <p className="mt-2 font-display text-2xl font-bold text-gray-900">{c.landingCard3Value}</p>
                 <div className="mt-2 flex gap-1">
                   {[...Array(12)].map((_, i) => (
                     <div key={i} className={`h-1.5 flex-1 rounded-full ${i < 8 ? 'bg-zubkas-700' : 'bg-gray-100'}`} />
                   ))}
                 </div>
-                <p className="mt-1 text-[10px] text-gray-400">8/12 months commission active</p>
+                <p className="mt-1 text-[10px] text-gray-400">{c.landingCard3Sub}</p>
               </div>
 
               {/* Card 4 - Badge */}
               <div className="absolute bottom-0 right-4 w-52 rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-white p-4 shadow-xl animate-slide-up" style={{ animationDelay: '400ms' }}>
                 <div className="flex items-center gap-2">
                   <Rocket className="h-5 w-5 text-blue-500" />
-                  <span className="text-sm font-semibold text-gray-900">New Champion</span>
+                  <span className="text-sm font-semibold text-gray-900">{c.landingCard4Title}</span>
                 </div>
-                <p className="mt-1 text-xs text-gray-500">Badge earned</p>
+                <p className="mt-1 text-xs text-gray-500">{c.landingCard4Sub}</p>
                 <div className="mt-2 flex items-center gap-1">
                   <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
                   <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
@@ -296,17 +304,13 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
       <section id="how-it-works" className="px-6 py-20">
         <div className="mx-auto max-w-5xl">
           <div className="text-center">
-            <p className="text-sm font-semibold uppercase tracking-wider text-zubkas-700">How It Works</p>
+            <p className="text-sm font-semibold uppercase tracking-wider text-zubkas-700">{c.landingHowItWorksLabel}</p>
             <h2 className="mt-2 font-display text-3xl font-bold text-gray-900 sm:text-4xl">
               {c.landingHowItWorksHeading}
             </h2>
           </div>
           <div className="mt-12 grid gap-8 md:grid-cols-3">
-            {[
-              { step: '01', icon: Layers, title: 'Get Approved', desc: 'Admins create your partner account and assign your category. No self-registration — every partner is verified.' },
-              { step: '02', icon: Target, title: 'Refer Customers', desc: 'Submit leads with lead-lock protection. When a lead converts, commission starts automatically.' },
-              { step: '03', icon: DollarSign, title: 'Earn Commission', desc: 'Earn 5-15% every month for 12 months on monthly plans, or a lump-sum on yearly plans. Track everything in real-time.' },
-            ].map((s, i) => (
+            {steps.map((s, i) => (
               <div key={s.step} className="relative">
                 {i < 2 && (
                   <div className="absolute top-8 left-full hidden h-px w-full -translate-x-8 bg-gradient-to-r from-zubkas-200 to-transparent md:block" />
@@ -360,14 +364,14 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
                 onError={(e) => { const t = e.currentTarget; if (!t.dataset.fb) { t.dataset.fb = '1'; t.src = '/assets/icons/zubkas_icon_hd_white.png'; } }}
               />
               <div>
-                <p className="font-display text-sm font-bold text-gray-900">Zubkas Partner Program</p>
-                <p className="text-[10px] text-gray-400">Affiliate & Partner Management</p>
+                <p className="font-display text-sm font-bold text-gray-900">{c.landingFooterTagline}</p>
+                <p className="text-[10px] text-gray-400">{c.landingFooterSub}</p>
               </div>
             </div>
             <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-center">
-              <span className="text-xs text-gray-400">© {new Date().getFullYear()} Zubkas Partner Program. All rights reserved.</span>
+              <span className="text-xs text-gray-400">© {new Date().getFullYear()} {c.landingFooterCopyright}</span>
               <span className="hidden sm:block text-gray-300">·</span>
-              <span className="text-xs font-medium">Powered by <span className="font-display font-bold text-zubkas-700">Zubkas</span></span>
+              <span className="text-xs font-medium">{c.landingFooterPoweredBy} <span className="font-display font-bold text-zubkas-700">Zubkas</span></span>
             </div>
           </div>
         </div>

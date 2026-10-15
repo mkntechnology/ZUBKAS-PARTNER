@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { usePersistentState } from '@/utils/usePersistentState';
-import { LayoutDashboard, Users, Settings, FolderTree, Layers, Megaphone, Trophy, Target, Bell, User as UserIcon, DollarSign, Package, CircleUser as UserCircle, Type, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Users, Settings, FolderTree, Layers, Megaphone, Trophy, Target, Bell, User as UserIcon, DollarSign, Package, CircleUser as UserCircle, Type, ShieldCheck, MessageSquare as Popups } from 'lucide-react';
 import { AppProvider, useApp } from '@/context/AppContext';
 import { AppLayout } from '@/components/AppLayout';
 import { LandingPage } from '@/pages/LandingPage';
@@ -21,6 +21,7 @@ import { AdminSettings } from '@/pages/admin/AdminSettings';
 import { AdminContentManager } from '@/pages/admin/AdminContentManager';
 import { AdminProfile } from '@/pages/admin/AdminProfile';
 import { AdminRoles } from '@/pages/admin/AdminRoles';
+import { AdminPopups } from '@/pages/admin/AdminPopups';
 
 // Partner pages
 import { PartnerDashboard } from '@/pages/partner/PartnerDashboard';
@@ -30,8 +31,9 @@ import { PartnerCommissions } from '@/pages/partner/PartnerCommissions';
 import { PartnerProducts } from '@/pages/partner/PartnerProducts';
 import { PartnerAnnouncements } from '@/pages/partner/PartnerAnnouncements';
 import { PartnerLeaderboard } from '@/pages/partner/PartnerLeaderboard';
-import { PartnerNotifications } from '@/pages/partner/PartnerNotifications';
+import { PartnerPlans } from '@/pages/partner/PartnerPlans';
 import { PartnerProfile } from '@/pages/partner/PartnerProfile';
+import { PopupDisplay } from '@/components/PopupDisplay';
 
 const adminNavItems = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -44,6 +46,7 @@ const adminNavItems = [
   { key: 'products', label: 'Products', icon: Package },
   { key: 'content', label: 'Content Manager', icon: Type },
   { key: 'announcements', label: 'Announcements', icon: Megaphone },
+  { key: 'popups', label: 'Popups', icon: Popups },
   { key: 'leaderboard', label: 'Leaderboard', icon: Trophy },
   { key: 'roles', label: 'Roles & Permissions', icon: ShieldCheck },
   { key: 'settings', label: 'Settings', icon: Settings },
@@ -55,19 +58,30 @@ const partnerNavItems = [
   { key: 'customers', label: 'My Customers', icon: Users },
   { key: 'leads', label: 'My Leads', icon: Target },
   { key: 'commissions', label: 'Commissions', icon: DollarSign },
+  { key: 'plans', label: 'Plans & Features', icon: Layers },
   { key: 'products', label: 'Products', icon: Package },
   { key: 'announcements', label: 'Announcements', icon: Megaphone },
   { key: 'leaderboard', label: 'Leaderboard', icon: Trophy },
-  { key: 'notifications', label: 'Notifications', icon: Bell },
   { key: 'profile', label: 'My Profile', icon: UserCircle },
 ];
 
 function AdminPortal() {
-  const { currentUser, notifications, hasPermission } = useApp();
+  const { currentUser, notifications, announcements, readAnnouncementIds, dismissedAnnouncementIds, dismissedNotificationIds, hasPermission } = useApp();
   const [page, setPage] = usePersistentState<string>('zubkas_admin_page', 'dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const unreadCount = notifications.filter(n => (n.userId === 'admin' || n.userId === 'broadcast') && !n.read).length;
+  const unreadCount = useMemo(() => {
+    const unreadNotifs = notifications.filter(n =>
+      !dismissedNotificationIds.includes(n.id) &&
+      !n.read &&
+      (n.userId === 'admin' || n.userId === 'broadcast')
+    ).length;
+    const unreadAnnouncements = announcements.filter(a =>
+      !dismissedAnnouncementIds.includes(a.id) &&
+      !readAnnouncementIds.includes(a.id)
+    ).length;
+    return unreadNotifs + unreadAnnouncements;
+  }, [notifications, announcements, dismissedNotificationIds, dismissedAnnouncementIds, readAnnouncementIds]);
 
   const allItems = adminNavItems.map(item =>
     item.key === 'announcements' ? { ...item, badge: unreadCount } : item
@@ -101,6 +115,7 @@ function AdminPortal() {
       case 'settings': return <AdminSettings />;
       case 'content': return <AdminContentManager />;
       case 'roles': return <AdminRoles />;
+      case 'popups': return <AdminPopups />;
       case 'profile': return <AdminProfile />;
       default: return <AdminDashboard />;
     }
@@ -119,20 +134,37 @@ function AdminPortal() {
       onCloseSidebar={() => setSidebarOpen(false)}
     >
       {renderPage()}
+      <PopupDisplay />
     </AppLayout>
   );
 }
 
 function PartnerPortal() {
-  const { currentUser, notifications } = useApp();
+  const {
+    currentUser, notifications, announcements,
+    readAnnouncementIds, dismissedAnnouncementIds, dismissedNotificationIds,
+  } = useApp();
   const [page, setPage] = usePersistentState<string>('zubkas_partner_page', 'dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [highlightAnnouncementId, setHighlightAnnouncementId] = useState<string | null>(null);
 
-  const unreadCount = notifications.filter(n =>
-    (n.userId === currentUser?.partnerId || n.userId === 'broadcast') && !n.read
-  ).length;
+  // Compute unread count the same way the Header dropdown does — accounting
+  // for dismissed notifications AND unread, non-dismissed announcements.
+  const unreadCount = useMemo(() => {
+    const unreadNotifs = notifications.filter(n =>
+      !dismissedNotificationIds.includes(n.id) &&
+      !n.read &&
+      (n.userId === currentUser?.partnerId || n.userId === 'broadcast')
+    ).length;
+    const unreadAnnouncements = announcements.filter(a =>
+      !dismissedAnnouncementIds.includes(a.id) &&
+      !readAnnouncementIds.includes(a.id)
+    ).length;
+    return unreadNotifs + unreadAnnouncements;
+  }, [notifications, announcements, dismissedNotificationIds, dismissedAnnouncementIds, readAnnouncementIds, currentUser?.partnerId]);
+
   const items = partnerNavItems.map(item =>
-    item.key === 'notifications' ? { ...item, badge: unreadCount } : item
+    item.key === 'announcements' ? { ...item, badge: unreadCount } : item
   );
 
   const renderPage = () => {
@@ -141,10 +173,10 @@ function PartnerPortal() {
       case 'customers': return <PartnerCustomers />;
       case 'leads': return <PartnerLeads />;
       case 'commissions': return <PartnerCommissions />;
+      case 'plans': return <PartnerPlans />;
       case 'products': return <PartnerProducts />;
-      case 'announcements': return <PartnerAnnouncements />;
+      case 'announcements': return <PartnerAnnouncements highlightId={highlightAnnouncementId} />;
       case 'leaderboard': return <PartnerLeaderboard />;
-      case 'notifications': return <PartnerNotifications />;
       case 'profile': return <PartnerProfile />;
       default: return <PartnerDashboard />;
     }
@@ -155,6 +187,10 @@ function PartnerPortal() {
       sidebarItems={items}
       activePage={page}
       onNavigate={setPage}
+      onNotificationNavigate={(targetPage, annId) => {
+        setPage(targetPage);
+        if (annId) setHighlightAnnouncementId(annId);
+      }}
       userName={currentUser?.name ?? ''}
       userRole="Partner"
       variant="partner"
@@ -163,6 +199,7 @@ function PartnerPortal() {
       onCloseSidebar={() => setSidebarOpen(false)}
     >
       {renderPage()}
+      <PopupDisplay />
     </AppLayout>
   );
 }

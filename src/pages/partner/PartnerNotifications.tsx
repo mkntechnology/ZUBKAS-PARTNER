@@ -1,7 +1,8 @@
-import { Bell, DollarSign, TrendingUp, Package, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
+import { Bell, DollarSign, TrendingUp, Package, AlertTriangle, Info, CheckCircle2, Trash2 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader, EmptyState } from '@/components/Shared';
 import { formatDate } from '@/utils/helpers';
+import { useMergedNotifications } from '@/utils/useMergedNotifications';
 import type { Notification } from '@/types';
 
 const typeConfig: Record<Notification['type'], { icon: typeof Bell; color: string; bg: string }> = {
@@ -13,14 +14,22 @@ const typeConfig: Record<Notification['type'], { icon: typeof Bell; color: strin
 };
 
 export function PartnerNotifications() {
-  const { currentUser, notifications, markNotificationRead, markAllRead } = useApp();
+  const { currentUser, notifications, announcements, markNotificationRead,
+    readAnnouncementIds, dismissedAnnouncementIds, dismissedNotificationIds,
+    setReadAnnouncementIds, setDismissedAnnouncementIds, setDismissedNotificationIds,
+  } = useApp();
 
-  const myNotifs = notifications.filter(n =>
-    n.userId === currentUser?.partnerId ||
-    n.userId === currentUser?.id ||
-    n.userId === 'broadcast'
+  const { merged: myNotifs, unreadCount, markRead, markAllRead, dismiss } = useMergedNotifications(
+    notifications, announcements, currentUser?.id, currentUser?.partnerId, currentUser?.role,
+    readAnnouncementIds, dismissedAnnouncementIds, dismissedNotificationIds,
+    setReadAnnouncementIds, setDismissedAnnouncementIds, setDismissedNotificationIds,
   );
-  const unreadCount = myNotifs.filter(n => !n.read).length;
+
+  const handleClick = (n: typeof myNotifs[number]) => {
+    if (n.read) return;
+    if (n.source === 'notification') markNotificationRead(n.id);
+    else markRead(n.id);
+  };
 
   return (
     <div className="space-y-6">
@@ -38,24 +47,32 @@ export function PartnerNotifications() {
             const cfg = typeConfig[n.type];
             const Icon = cfg.icon;
             return (
-              <button
+              <div
                 key={n.id}
-                onClick={() => markNotificationRead(n.id)}
-                className={`card w-full p-4 text-left flex items-start gap-4 transition-all ${!n.read ? 'border-l-4 border-l-zubkas-700' : 'opacity-70'}`}
+                className={`card w-full p-4 flex items-start gap-4 transition-all ${!n.read ? 'border-l-4 border-l-zubkas-700' : 'opacity-70'}`}
               >
-                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${cfg.bg}`}>
-                  <Icon className={`h-5 w-5 ${cfg.color}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium text-gray-900">{n.title}</p>
-                    {!n.read && <span className="h-2 w-2 rounded-full bg-zubkas-700 shrink-0" />}
+                <button onClick={() => handleClick(n)} className="flex flex-1 items-start gap-4 text-left">
+                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${cfg.bg}`}>
+                    <Icon className={`h-5 w-5 ${cfg.color}`} />
                   </div>
-                  <p className="text-sm text-gray-500 mt-0.5">{n.message}</p>
-                  <p className="text-xs text-gray-400 mt-2">{formatDate(n.date)}</p>
-                </div>
-                {!n.read && <CheckCircle2 className="h-4 w-4 text-gray-300 shrink-0 mt-1" />}
-              </button>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-gray-900">{n.title}</p>
+                      {!n.read && <span className="h-2 w-2 rounded-full bg-zubkas-700 shrink-0" />}
+                    </div>
+                    <p className="text-sm text-gray-500 mt-0.5">{n.message}</p>
+                    <p className="text-xs text-gray-400 mt-2">{formatDate(n.date)}</p>
+                  </div>
+                  {!n.read && <CheckCircle2 className="h-4 w-4 text-gray-300 shrink-0 mt-1" />}
+                </button>
+                <button
+                  onClick={() => dismiss(n.id)}
+                  className="shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                  title="Dismiss"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
             );
           })}
         </div>

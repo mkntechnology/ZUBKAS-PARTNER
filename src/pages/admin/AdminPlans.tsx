@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Layers, Percent, Trash2, TriangleAlert as AlertTriangle } from 'lucide-react';
+import { Plus, Layers, Percent, Trash2, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle2, X } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader } from '@/components/Shared';
 import { Modal } from '@/components/Modal';
@@ -8,14 +8,27 @@ import type { Plan } from '@/types';
 export function AdminPlans() {
   const { plans, addPlan, deletePlan } = useApp();
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name: '', commissionRate: '10', description: '' });
+  const [form, setForm] = useState({ name: '', commissionRate: '10', description: '', features: [''] });
   const [deleteTarget, setDeleteTarget] = useState<Plan | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    addPlan({ name: form.name, commissionRate: Number(form.commissionRate), type: 'Monthly', description: form.description });
-    setForm({ name: '', commissionRate: '10', description: '' });
+    const cleanFeatures = form.features.map(f => f.trim()).filter(Boolean);
+    addPlan({ name: form.name, commissionRate: Number(form.commissionRate), type: 'Monthly', description: form.description, features: cleanFeatures });
+    setForm({ name: '', commissionRate: '10', description: '', features: [''] });
     setShowAdd(false);
+  };
+
+  const addFeature = () => {
+    setForm(prev => ({ ...prev, features: [...prev.features, ''] }));
+  };
+
+  const updateFeature = (index: number, value: string) => {
+    setForm(prev => ({ ...prev, features: prev.features.map((f, i) => i === index ? value : f) }));
+  };
+
+  const removeFeature = (index: number) => {
+    setForm(prev => ({ ...prev, features: prev.features.length > 1 ? prev.features.filter((_, i) => i !== index) : [''] }));
   };
 
   return (
@@ -47,6 +60,16 @@ export function AdminPlans() {
             </div>
             <h3 className="mt-3 font-display font-semibold text-gray-900">{p.name}</h3>
             <p className="mt-1 text-sm text-gray-500">{p.description}</p>
+            {p.features && p.features.length > 0 && (
+              <div className="mt-3 space-y-1.5">
+                {p.features.map((f, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs text-gray-600">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                    {f}
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="mt-4 flex items-center gap-4">
               <div className="flex items-center gap-1.5">
                 <Percent className="h-4 w-4 text-zubkas-700" />
@@ -71,6 +94,35 @@ export function AdminPlans() {
           <div>
             <label className="text-sm font-medium text-gray-700">Description</label>
             <textarea required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="input-field mt-1 min-h-20" placeholder="Plan features and details" />
+          </div>
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-gray-700">Plan Features</label>
+              <button type="button" onClick={addFeature} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-zubkas-700 hover:bg-zubkas-50 transition-colors">
+                <Plus className="h-3.5 w-3.5" />
+                Add Feature
+              </button>
+            </div>
+            <div className="mt-2 space-y-2">
+              {form.features.map((feature, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <input
+                    value={feature}
+                    onChange={(e) => updateFeature(index, e.target.value)}
+                    className="input-field flex-1"
+                    placeholder={`Feature ${index + 1} (e.g. "Priority support")`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeFeature(index)}
+                    className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors shrink-0"
+                    title="Remove feature"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
           <button type="submit" className="btn-primary w-full">Add Plan</button>
         </form>

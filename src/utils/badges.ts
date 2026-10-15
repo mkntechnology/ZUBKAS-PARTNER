@@ -137,15 +137,18 @@ export function calculateLeaderboard(
     })
     .sort((a, b) => b.monthlyCommission - a.monthlyCommission)
     .slice(0, 10)
-    .map((p, i) => ({
-      partnerId: p.id,
-      partnerName: p.name,
-      company: p.company,
-      metric: p.monthlyCommission,
-      metricLabel: `${formatCurrency(p.monthlyCommission)} monthly commission`,
-      rank: i + 1,
-      badge: calculatePartnerBadge(p, customers, leads, transactions, partners),
-    }));
+    .map((p, i) => {
+      const activeCustomers = customers.filter(c => c.partnerId === p.id && c.status === 'Active').length;
+      return {
+        partnerId: p.id,
+        partnerName: p.name,
+        company: p.company,
+        metric: p.monthlyCommission,
+        metricLabel: `${activeCustomers} active customers`,
+        rank: i + 1,
+        badge: calculatePartnerBadge(p, customers, leads, transactions, partners),
+      };
+    });
   sections.push({ key: 'newChampion', title: 'New Partner Champion', subtitle: 'Top new partner (joined within 12 months)', iconName: 'Rocket', entries: newChampion });
 
   return sections;

@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Bell, Search, LogOut, Menu, ChevronDown } from 'lucide-react';
+import { Bell, Search, LogOut, Menu, ChevronDown, Trash2 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { getInitials, formatDate } from '@/utils/helpers';
+import { useMergedNotifications } from '@/utils/useMergedNotifications';
 
 const logoImg = '/assets/icons/zubkas_icon_hd_new.png';
 const logoImgFallback = '/assets/icons/zubkas_icon_hd_white.png';
@@ -9,22 +10,24 @@ const logoImgFallback = '/assets/icons/zubkas_icon_hd_white.png';
 interface HeaderProps {
   onToggleSidebar: () => void;
   onNavigate: (page: string) => void;
+  onNotificationNavigate?: (page: string, announcementId?: string) => void;
 }
 
-export function Header({ onToggleSidebar, onNavigate }: HeaderProps) {
-  const { currentUser, notifications, logout, markNotificationRead, markAllRead } = useApp();
+export function Header({ onToggleSidebar, onNavigate, onNotificationNavigate }: HeaderProps) {
+  const { currentUser, notifications, announcements, logout, markNotificationRead,
+    readAnnouncementIds, dismissedAnnouncementIds, dismissedNotificationIds,
+    setReadAnnouncementIds, setDismissedAnnouncementIds, setDismissedNotificationIds,
+  } = useApp();
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
   if (!currentUser) return null;
 
-  const userNotifs = notifications.filter(n =>
-    n.userId === currentUser.partnerId ||
-    n.userId === currentUser.id ||
-    n.userId === currentUser.role ||
-    n.userId === 'broadcast'
+  const { merged: userNotifs, unreadCount, markRead, markAllRead, dismiss } = useMergedNotifications(
+    notifications, announcements, currentUser.id, currentUser.partnerId, currentUser.role,
+    readAnnouncementIds, dismissedAnnouncementIds, dismissedNotificationIds,
+    setReadAnnouncementIds, setDismissedAnnouncementIds, setDismissedNotificationIds,
   );
-  const unreadCount = userNotifs.filter(n => !n.read).length;
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-gray-100 bg-white/90 px-4 backdrop-blur-md sm:px-6">
@@ -77,18 +80,41 @@ export function Header({ onToggleSidebar, onNavigate }: HeaderProps) {
                     <div className="py-8 text-center text-sm text-gray-400">No notifications</div>
                   ) : (
                     userNotifs.slice(0, 10).map(n => (
-                      <button
+                      <div
                         key={n.id}
-                        onClick={() => markNotificationRead(n.id)}
-                        className={`flex w-full gap-3 border-b border-gray-50 px-4 py-3 text-left transition-colors hover:bg-gray-50 ${!n.read ? 'bg-zubkas-50/40' : ''}`}
+                        className={`group flex w-full gap-3 border-b border-gray-50 px-4 py-3 text-left transition-colors hover:bg-gray-50 ${!n.read ? 'bg-zubkas-50/40' : ''}`}
                       >
-                        {!n.read && <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-zubkas-700" />}
-                        <div className={n.read ? 'pl-5' : ''}>
-                          <p className="text-sm font-medium text-gray-900">{n.title}</p>
-                          <p className="text-xs text-gray-500 mt-0.5">{n.message}</p>
-                          <p className="text-[10px] text-gray-400 mt-1">{formatDate(n.date)}</p>
-                        </div>
-                      </button>
+                        <button
+                          onClick={() => {
+                            if (!n.read) {
+                              if (n.source === 'notification') markNotificationRead(n.id);
+                              else markRead(n.id);
+                            }
+                            if (n.source === 'announcement' && n.announcementId && onNotificationNavigate) {
+                              setNotifOpen(false);
+                              onNotificationNavigate('announcements', n.announcementId);
+                            } else if (n.type === 'announcement' && onNotificationNavigate) {
+                              setNotifOpen(false);
+                              onNotificationNavigate('announcements');
+                            }
+                          }}
+                          className="flex flex-1 gap-3 text-left"
+                        >
+                          {!n.read && <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-zubkas-700" />}
+                          <div className={n.read ? 'pl-5' : ''}>
+                            <p className="text-sm font-medium text-gray-900">{n.title}</p>
+                            <p className="text-xs text-gray-500 mt-0.5">{n.message}</p>
+                            <p className="text-[10px] text-gray-400 mt-1">{formatDate(n.date)}</p>
+                          </div>
+                        </button>
+                        <button
+                          onClick={() => dismiss(n.id)}
+                          className="shrink-0 rounded p-1 text-gray-300 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-600 group-hover:opacity-100"
+                          title="Dismiss"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     ))
                   )}
                 </div>

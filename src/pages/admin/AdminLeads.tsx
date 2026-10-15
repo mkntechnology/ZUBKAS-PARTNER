@@ -57,7 +57,7 @@ const emptyCreateForm: CreateLeadForm = {
 };
 
 export function AdminLeads() {
-  const { leads, products, partners, customers, settings, deleteLead, updateLeadStatus, approveLead, adminAddLead, updateLeadPayment } = useApp();
+  const { leads, products, partners, plans, customers, settings, deleteLead, updateLeadStatus, approveLead, adminAddLead, updateLeadPayment } = useApp();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null);
@@ -112,11 +112,28 @@ export function AdminLeads() {
 
   const pendingCount = leads.filter(l => l.status === 'Pending Approval').length;
 
+  const getPartnerPlanCommission = (lead: Lead): string | null => {
+    const partner = partners.find(p => p.id === lead.partnerId);
+    if (!partner?.planId) return null;
+    const plan = plans.find(pl => pl.id === partner.planId);
+    return plan ? String(plan.commissionRate) : null;
+  };
+
+  const getProductPrice = (lead: Lead): string | null => {
+    if (!lead.productId) return null;
+    const product = products.find(p => p.id === lead.productId);
+    if (!product) return null;
+    const price = lead.planType === 'Yearly' ? product.yearlyPrice : product.monthlyPrice;
+    return price != null ? String(price) : null;
+  };
+
   const openPayment = (lead: Lead) => {
+    const planRate = getPartnerPlanCommission(lead);
+    const productPrice = getProductPrice(lead);
     setPaymentForm({
       paymentStatus: lead.paymentStatus ?? 'Unpaid',
-      planPrice: lead.planPrice ? String(lead.planPrice) : '',
-      commissionRate: lead.commissionRate ? String(lead.commissionRate) : '15',
+      planPrice: lead.planPrice ? String(lead.planPrice) : productPrice ?? '',
+      commissionRate: lead.commissionRate ? String(lead.commissionRate) : planRate ?? '15',
       renewalDate: lead.renewalDate ?? '',
     });
     setPaymentErrors({});
@@ -151,11 +168,13 @@ export function AdminLeads() {
       : null;
 
   const openApprove = (lead: Lead) => {
+    const planRate = getPartnerPlanCommission(lead);
+    const productPrice = getProductPrice(lead);
     setApprovalForm({
       productId: lead.productId ?? '',
       planType: lead.planType ?? 'Monthly',
-      planPrice: lead.planPrice ? String(lead.planPrice) : '',
-      commissionRate: lead.commissionRate ? String(lead.commissionRate) : '15',
+      planPrice: lead.planPrice ? String(lead.planPrice) : productPrice ?? '',
+      commissionRate: lead.commissionRate ? String(lead.commissionRate) : planRate ?? '15',
     });
     setApprovalErrors({});
     setApproveTarget(lead);
@@ -465,7 +484,11 @@ export function AdminLeads() {
                 </label>
                 <select
                   value={approvalForm.productId}
-                  onChange={e => setApprovalForm(f => ({ ...f, productId: e.target.value }))}
+                  onChange={e => {
+                    const prod = products.find(p => p.id === e.target.value);
+                    const price = approvalForm.planType === 'Yearly' ? prod?.yearlyPrice : prod?.monthlyPrice;
+                    setApprovalForm(f => ({ ...f, productId: e.target.value, planPrice: price != null ? String(price) : '' }));
+                  }}
                   className={`input-field ${approvalErrors.productId ? 'border-red-400' : ''}`}
                 >
                   <option value="">— Select a product —</option>
@@ -496,7 +519,11 @@ export function AdminLeads() {
                     <button
                       key={pt}
                       type="button"
-                      onClick={() => setApprovalForm(f => ({ ...f, planType: pt }))}
+                      onClick={() => {
+                        const prod = products.find(p => p.id === approvalForm.productId);
+                        const price = pt === 'Yearly' ? prod?.yearlyPrice : prod?.monthlyPrice;
+                        setApprovalForm(f => ({ ...f, planType: pt, planPrice: price != null ? String(price) : f.planPrice }));
+                      }}
                       className={`flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all ${
                         approvalForm.planType === pt
                           ? 'border-zubkas-700 bg-zubkas-50 text-zubkas-700'

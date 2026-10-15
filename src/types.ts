@@ -3,7 +3,7 @@ export type UserRole = 'admin' | 'employee' | 'partner';
 export type AdminSectionKey =
   | 'dashboard' | 'partners' | 'leads' | 'employees' | 'categories'
   | 'plans' | 'products' | 'content' | 'announcements' | 'leaderboard'
-  | 'settings' | 'roles' | 'support';
+  | 'settings' | 'roles' | 'support' | 'popups';
 
 export interface Role {
   id: string;
@@ -37,6 +37,7 @@ export interface Plan {
   commissionRate: number;
   type: 'Monthly' | 'Yearly';
   description: string;
+  features: string[];
   isCustom?: boolean;
 }
 
@@ -99,6 +100,7 @@ export interface Partner {
   pendingCommission: number;
   monthlySales: number;
   badge?: string;
+  planId?: string;
 }
 
 export interface Employee {
@@ -128,6 +130,17 @@ export interface Announcement {
   authorRole: string;
   date: string;
   isPinned: boolean;
+}
+
+export interface Popup {
+  id: string;
+  title: string;
+  content: string;
+  imageUrl?: string;
+  targetType: 'all_partners' | 'specific_partner' | 'all_employees' | 'specific_employee';
+  targetId?: string;
+  isActive: boolean;
+  createdAt: string;
 }
 
 export interface Product {
@@ -200,11 +213,55 @@ export interface SiteContent {
   landingHeroSubtitle: string;
   landingCtaPrimary: string;
   landingCtaSecondary: string;
+  landingNavSignIn: string;
+  landingFeaturesLabel: string;
   landingFeaturesHeading: string;
   landingFeaturesSubheading: string;
+  landingFeature1Title: string;
+  landingFeature1Desc: string;
+  landingFeature2Title: string;
+  landingFeature2Desc: string;
+  landingFeature3Title: string;
+  landingFeature3Desc: string;
+  landingFeature4Title: string;
+  landingFeature4Desc: string;
+  landingFeature5Title: string;
+  landingFeature5Desc: string;
+  landingFeature6Title: string;
+  landingFeature6Desc: string;
+  landingTrust1Label: string;
+  landingTrust1Sub: string;
+  landingTrust2Label: string;
+  landingTrust2Sub: string;
+  landingTrust3Label: string;
+  landingTrust3Sub: string;
+  landingEarningsLabel: string;
   landingEarningsHeading: string;
   landingEarningsDesc: string;
+  landingEarningsBullet1: string;
+  landingEarningsBullet2: string;
+  landingEarningsBullet3: string;
+  landingEarningsBullet4: string;
+  landingCard1Label: string;
+  landingCard1Value: string;
+  landingCard1Trend: string;
+  landingCard2Title: string;
+  landingCard2Name: string;
+  landingCard2Value: string;
+  landingCard2Sub: string;
+  landingCard3Label: string;
+  landingCard3Value: string;
+  landingCard3Sub: string;
+  landingCard4Title: string;
+  landingCard4Sub: string;
+  landingHowItWorksLabel: string;
   landingHowItWorksHeading: string;
+  landingStep1Title: string;
+  landingStep1Desc: string;
+  landingStep2Title: string;
+  landingStep2Desc: string;
+  landingStep3Title: string;
+  landingStep3Desc: string;
   landingCtaSectionHeading: string;
   landingCtaSectionDesc: string;
   landingCtaSectionButton: string;
@@ -216,15 +273,47 @@ export interface SiteContent {
   landingStat3Label: string;
   landingStat4Value: string;
   landingStat4Label: string;
+  landingFooterTagline: string;
+  landingFooterSub: string;
+  landingFooterCopyright: string;
+  landingFooterPoweredBy: string;
   // Login page
   loginBadge: string;
   loginHeroTitle1: string;
   loginHeroTitle2: string;
   loginHeroSubtitle: string;
+  loginFeature1Title: string;
+  loginFeature1Desc: string;
+  loginFeature2Title: string;
+  loginFeature2Desc: string;
+  loginFeature3Title: string;
+  loginFeature3Desc: string;
+  loginStat1Value: string;
+  loginStat1Label: string;
+  loginStat2Value: string;
+  loginStat2Label: string;
+  loginStat3Value: string;
+  loginStat3Label: string;
   loginPartnerTitle: string;
   loginPartnerSubtitle: string;
   loginAdminTitle: string;
   loginAdminSubtitle: string;
+  loginTabPartner: string;
+  loginTabAdmin: string;
+  loginMethodPassword: string;
+  loginMethodOtp: string;
+  loginEmailLabel: string;
+  loginPasswordLabel: string;
+  loginOtpLabel: string;
+  loginSignInButton: string;
+  loginSendOtpButton: string;
+  loginVerifyButton: string;
+  loginChangeEmailButton: string;
+  loginOtpSentPrefix: string;
+  loginOtpSentSuffix: string;
+  loginInstallButton: string;
+  loginInstalledText: string;
+  loginFooterPoweredBy: string;
 }
 
 export interface ChatMessage {

@@ -2,12 +2,13 @@ import { createContext, useContext, useCallback, useEffect, useState, useRef, ty
 import type {
   User, Partner, Customer, Lead, Employee, Category,
   Announcement, Notification, Plan, AppSettings, Product, SiteContent,
-  CommissionTransaction, Role, AdminSectionKey,
+  CommissionTransaction, Role, AdminSectionKey, Popup,
   ChatThread, ChatMessage, LeadPaymentStatus, PlanType,
 } from '@/types';
 import { appSettings as defaultAppSettings, defaultSiteContent, defaultRoles } from '@/data/mockData';
 import { usePersistentState } from '@/utils/usePersistentState';
 import { useSupabaseCollection, useSupabaseSingleton } from '@/utils/useSupabaseState';
+import { useNotificationSound } from '@/utils/useNotificationSound';
 import { supabase } from '@/lib/supabase';
 
 interface ProfileUpdate {
@@ -45,6 +46,7 @@ interface AppContextValue {
   siteContent: SiteContent;
   transactions: CommissionTransaction[];
   roles: Role[];
+  popups: Popup[];
 
   hasPermission: (section: AdminSectionKey) => boolean;
   getEmployeePermissions: (roleId: string) => AdminSectionKey[];
@@ -63,9 +65,12 @@ interface AppContextValue {
   deleteCategory: (id: string) => void;
   addPlan: (p: Omit<Plan, 'id'>) => void;
   deletePlan: (id: string) => void;
+  addPopup: (p: Omit<Popup, 'id' | 'createdAt'>) => void;
+  updatePopup: (id: string, updates: Partial<Omit<Popup, 'id'>>) => void;
+  deletePopup: (id: string) => void;
   addProduct: (p: Omit<Product, 'id'>) => void;
   deleteProduct: (id: string) => void;
-  addAnnouncement: (a: Omit<Announcement, 'id' | 'date' | 'author' | 'authorRole' | 'isPinned'>) => void;
+  addAnnouncement: (a: Omit<Announcement, 'id' | 'date' | 'author' | 'authorRole' | 'isPinned'>) => Promise<{ success: boolean; error?: string }>;
   deleteAnnouncement: (id: string) => void;
   deleteLead: (id: string) => void;
   updateLeadStatus: (id: string, status: Lead['status']) => void;
@@ -78,6 +83,15 @@ interface AppContextValue {
   deleteCustomer: (id: string) => void;
   markNotificationRead: (id: string) => void;
   markAllRead: () => void;
+
+  // Per-browser dismissed/read tracking for merged notification feed
+  readAnnouncementIds: string[];
+  dismissedAnnouncementIds: string[];
+  dismissedNotificationIds: string[];
+  setReadAnnouncementIds: (updater: (prev: string[]) => string[]) => void;
+  setDismissedAnnouncementIds: (updater: (prev: string[]) => string[]) => void;
+  setDismissedNotificationIds: (updater: (prev: string[]) => string[]) => void;
+
   updateSettings: (s: Partial<AppSettings>) => void;
   updateSiteContent: (s: Partial<SiteContent>) => void;
   resetSiteContent: () => void;
@@ -116,6 +130,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const rolesHook = useSupabaseCollection<Role>('roles', defaultRoles);
   const chatThreadsHook = useSupabaseCollection<ChatThread>('chat_threads', []);
   const chatMessagesHook = useSupabaseCollection<ChatMessage>('chat_messages', [], 'timestamp');
+  const popupsHook = useSupabaseCollection<Popup>('popups', []);
 
   // Site content — singleton JSON blob
   const [siteContent, setSiteContent] = useSupabaseSingleton<SiteContent>('site_content', defaultSiteContent, 'content');
@@ -123,6 +138,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Settings — multi-column singleton
   const [settingsState, setSettingsState] = useState<AppSettings>(defaultAppSettings);
   const settingsLoadedRef = useRef(false);
+
+  // Per-browser dismissed/read tracking — single source of truth shared by
+  // Header dropdown, Notifications page, and Announcements page so they
+  // never drift apart on refresh.
+  const [readAnnouncementIds, setReadAnnouncementIds] = usePersistentState<string[]>('zubkas_read_announcements', []);
+  const [dismissedAnnouncementIds, setDismissedAnnouncementIds] = usePersistentState<string[]>('zubkas_dismissed_announcements', []);
+  const [dismissedNotificationIds, setDismissedNotificationIds] = usePersistentState<string[]>('zubkas_dismissed_notifications', []);
 
   // App users (login system)
   const [appUsers, setAppUsers] = useState<User[]>([]);
@@ -288,13 +310,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { state: roles } = rolesHook;
   const { state: chatThreads } = chatThreadsHook;
   const { state: chatMessages } = chatMessagesHook;
+  const { state: popups } = popupsHook;
 
   const allCollectionsLoaded = [
     partnersHook.loaded, customersHook.loaded, leadsHook.loaded, employeesHook.loaded,
     categoriesHook.loaded, announcementsHook.loaded, notificationsHook.loaded,
     plansHook.loaded, productsHook.loaded, transactionsHook.loaded, rolesHook.loaded,
-    chatThreadsHook.loaded, chatMessagesHook.loaded,
+    chatThreadsHook.loaded, chatMessagesHook.loaded, popupsHook.loaded,
   ].every(Boolean);
+
+  useNotificationSound(announcements, notifications, dataLoaded && allCollectionsLoaded);
 
   const login = useCallback(async (email: string, password: string) => {
     const lowerEmail = email.toLowerCase();
@@ -575,6 +600,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     plansHook.deleteRow(id);
   }, [plansHook]);
 
+  // ===== POPUPS =====
+  const addPopup: AppContextValue['addPopup'] = useCallback((p) => {
+    popupsHook.insertRow({ ...p, id: '' });
+  }, [popupsHook]);
+
+  const updatePopup: AppContextValue['updatePopup'] = useCallback((id, updates) => {
+    popupsHook.updateRow(id, updates);
+  }, [popupsHook]);
+
+  const deletePopup: AppContextValue['deletePopup'] = useCallback((id) => {
+    popupsHook.deleteRow(id);
+  }, [popupsHook]);
+
   // ===== PRODUCTS =====
   const addProduct: AppContextValue['addProduct'] = useCallback((p) => {
     productsHook.insertRow({ ...p, id: '' });
@@ -829,29 +867,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [customersHook]);
 
   // ===== ANNOUNCEMENTS =====
-  const addAnnouncement: AppContextValue['addAnnouncement'] = useCallback((a) => {
-    const newAnn: Announcement = {
-      ...a, id: '',
+  const addAnnouncement: AppContextValue['addAnnouncement'] = useCallback(async (a) => {
+    const author = currentUser?.name ?? 'Admin';
+    const authorRole = currentUser?.role === 'admin' ? 'Admin' : (currentUser?.employeeRole ?? 'Employee');
+    const newAnn = {
+      title: a.title,
+      content: a.content,
+      type: a.type,
       date: new Date().toISOString().split('T')[0],
-      author: currentUser?.name ?? 'Admin',
-      authorRole: currentUser?.role === 'admin' ? 'Admin' : (currentUser?.employeeRole ?? 'Employee'),
+      author,
+      authorRole,
       isPinned: false,
     };
-    announcementsHook.insertRow(newAnn);
-    notificationsHook.insertRow({
-      id: '', userId: 'broadcast',
-      title: 'New Announcement', message: a.title,
-      type: 'announcement', date: newAnn.date, read: false,
-    });
-  }, [currentUser, announcementsHook, notificationsHook]);
+    try {
+      await announcementsHook.insertRow(newAnn as Announcement);
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Failed to create announcement' };
+    }
+    return { success: true };
+  }, [currentUser, announcementsHook]);
 
   const deleteAnnouncement: AppContextValue['deleteAnnouncement'] = useCallback((id) => {
-    const ann = announcements.find(a => a.id === id);
     announcementsHook.deleteRow(id);
-    if (ann) {
-      notifications.filter(n => n.message === ann.title).forEach(n => notificationsHook.deleteRow(n.id));
-    }
-  }, [announcements, notifications, announcementsHook, notificationsHook]);
+  }, [announcementsHook]);
 
   // ===== NOTIFICATIONS =====
   const markNotificationRead = useCallback((id: string) => {
@@ -1001,10 +1039,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     <AppContext.Provider value={{
       currentUser, login, loginOtp, logout, dataLoaded: dataLoaded && usersLoaded && allCollectionsLoaded,
       partners, customers, leads, employees, categories, announcements, notifications, plans, products,
-      settings: settingsState, siteContent, transactions, roles,
+      settings: settingsState, siteContent, transactions, roles, popups,
       hasPermission, getEmployeePermissions, addRole, updateRole, deleteRole, assignEmployeeRole,
-      addPartner, updatePartner, deletePartner, addEmployee, updateEmployee, deleteEmployee, addCategory, deleteCategory, addPlan, deletePlan, addProduct, deleteProduct, addAnnouncement, deleteAnnouncement, addLead, adminAddLead, deleteLead, updateLeadStatus, approveLead, updateLeadPayment, convertLead, addCustomer, deleteCustomer,
-      markNotificationRead, markAllRead, updateSettings, updateSiteContent, resetSiteContent,
+      addPartner, updatePartner, deletePartner, addEmployee, updateEmployee, deleteEmployee, addCategory, deleteCategory, addPlan, deletePlan, addPopup, updatePopup, deletePopup, addProduct, deleteProduct, addAnnouncement, deleteAnnouncement, addLead, adminAddLead, deleteLead, updateLeadStatus, approveLead, updateLeadPayment, convertLead, addCustomer, deleteCustomer,
+      markNotificationRead, markAllRead,
+      readAnnouncementIds, dismissedAnnouncementIds, dismissedNotificationIds,
+      setReadAnnouncementIds, setDismissedAnnouncementIds, setDismissedNotificationIds,
+      updateSettings, updateSiteContent, resetSiteContent,
       clearDemoData, resetAllData, updateUserProfile, updateUserPassword, partnerUsers,
       partnerPasswords: Object.fromEntries(partnerUsers.map(u => [u.partnerId ?? '', userPasswords[u.id] ?? ''])),
       chatThreads, chatMessages, startChatThread, sendChatMessage, markThreadReadByPartner, markThreadReadBySupport, closeChatThread, reopenChatThread, totalUnreadChatBySupport,

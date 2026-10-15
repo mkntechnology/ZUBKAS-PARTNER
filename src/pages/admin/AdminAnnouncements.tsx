@@ -16,14 +16,23 @@ const typeConfig: Record<Announcement['type'], { icon: typeof Package; color: st
 export function AdminAnnouncements() {
   const { announcements, addAnnouncement, deleteAnnouncement } = useApp();
   const [showAdd, setShowAdd] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [form, setForm] = useState({ title: '', content: '', type: 'product' as Announcement['type'] });
   const [deleteTarget, setDeleteTarget] = useState<Announcement | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    addAnnouncement({ title: form.title, content: form.content, type: form.type });
-    setForm({ title: '', content: '', type: 'product' });
-    setShowAdd(false);
+    setSubmitting(true);
+    setSubmitError(null);
+    const result = await addAnnouncement({ title: form.title, content: form.content, type: form.type });
+    if (result.success) {
+      setForm({ title: '', content: '', type: 'product' });
+      setShowAdd(false);
+    } else {
+      setSubmitError(result.error ?? 'Failed to publish announcement');
+    }
+    setSubmitting(false);
   };
 
   const sorted = [...announcements].sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
@@ -74,7 +83,7 @@ export function AdminAnnouncements() {
         </div>
       )}
 
-      <Modal open={showAdd} onClose={() => setShowAdd(false)} title="New Announcement">
+      <Modal open={showAdd} onClose={() => { setShowAdd(false); setSubmitError(null); }} title="New Announcement">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="text-sm font-medium text-gray-700">Type</label>
@@ -93,10 +102,17 @@ export function AdminAnnouncements() {
             <label className="text-sm font-medium text-gray-700">Content</label>
             <textarea required value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} className="input-field mt-1 min-h-28" placeholder="Write your announcement..." />
           </div>
+          {submitError && (
+            <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-xs text-red-700">
+              {submitError}
+            </div>
+          )}
           <div className="rounded-lg bg-zubkas-50 p-3 text-xs text-zubkas-700">
             This announcement will instantly appear in all partners' notification feeds.
           </div>
-          <button type="submit" className="btn-primary w-full">Publish Announcement</button>
+          <button type="submit" disabled={submitting} className="btn-primary w-full disabled:opacity-60 disabled:cursor-not-allowed">
+            {submitting ? 'Publishing…' : 'Publish Announcement'}
+          </button>
         </form>
       </Modal>
 

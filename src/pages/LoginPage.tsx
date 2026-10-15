@@ -27,6 +27,18 @@ export function LoginPage({ onBack }: LoginPageProps) {
   const adminEmails = ['admin@zubkas.com', 'employee@zubkas.com', 'support@zubkas.com', 'zubkastechnology@gmail.com'];
   const partnerEmails = [...hardcodedPartnerEmails, ...partnerUsers.map(u => u.email.toLowerCase())];
 
+  const loginFeatures = [
+    { icon: DollarSign, title: c.loginFeature1Title, desc: c.loginFeature1Desc },
+    { icon: TrendingUp, title: c.loginFeature2Title, desc: c.loginFeature2Desc },
+    { icon: Shield, title: c.loginFeature3Title, desc: c.loginFeature3Desc },
+  ];
+
+  const loginStats = [
+    { icon: Users, value: c.loginStat1Value, label: c.loginStat1Label },
+    { icon: DollarSign, value: c.loginStat2Value, label: c.loginStat2Label },
+    { icon: Crown, value: c.loginStat3Value, label: c.loginStat3Label },
+  ];
+
   const validateMode = (emailToCheck: string): boolean => {
     const lower = emailToCheck.toLowerCase();
     if (mode === 'partner' && adminEmails.includes(lower)) {
@@ -149,11 +161,7 @@ export function LoginPage({ onBack }: LoginPageProps) {
 
           {/* Feature list */}
           <div className="mt-8 space-y-4">
-            {[
-              { icon: DollarSign, title: 'Up to 15% Commission', desc: 'On every subscription you refer' },
-              { icon: TrendingUp, title: '1-Year Recurring Earnings', desc: 'Commission for 12 months on monthly plans' },
-              { icon: Shield, title: 'Lead Lock Protection', desc: 'Your leads are protected for exclusive conversion' },
-            ].map((f, i) => (
+            {loginFeatures.map((f, i) => (
               <div key={i} className="flex items-center gap-3.5 animate-slide-in" style={{ animationDelay: `${i * 100}ms` }}>
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 backdrop-blur-sm">
                   <f.icon className="h-5 w-5 text-amber-300" />
@@ -169,11 +177,7 @@ export function LoginPage({ onBack }: LoginPageProps) {
 
         {/* Bottom — live stats */}
         <div className="relative z-10 grid grid-cols-3 gap-4 rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
-          {[
-            { icon: Users, value: '500+', label: 'Partners' },
-            { icon: DollarSign, value: '₹2.4Cr+', label: 'Commission Paid' },
-            { icon: Crown, value: '#1', label: 'Partner Program' },
-          ].map((s, i) => (
+          {loginStats.map((s, i) => (
             <div key={i} className="text-center">
               <s.icon className="mx-auto h-5 w-5 text-amber-300/70" />
               <p className="mt-1.5 font-display text-xl font-bold text-white">{s.value}</p>
@@ -200,14 +204,14 @@ export function LoginPage({ onBack }: LoginPageProps) {
                 className={`relative z-10 flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-colors duration-200 ${mode === 'partner' ? 'text-white' : 'text-gray-500 hover:text-gray-700'}`}
               >
                 <User className="h-4 w-4" />
-                Partner
+                {c.loginTabPartner}
               </button>
               <button
                 onClick={() => switchMode('admin')}
                 className={`relative z-10 flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-colors duration-200 ${mode === 'admin' ? 'text-white' : 'text-gray-500 hover:text-gray-700'}`}
               >
                 <Shield className="h-4 w-4" />
-                Admin
+                {c.loginTabAdmin}
               </button>
             </div>
 
@@ -225,14 +229,14 @@ export function LoginPage({ onBack }: LoginPageProps) {
                 className={`flex items-center gap-1.5 border-b-2 px-1 pb-2.5 text-sm font-medium transition-colors ${authMethod === 'password' ? 'border-zubkas-700 text-zubkas-700' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
               >
                 <Lock className="h-3.5 w-3.5" />
-                Password
+                {c.loginMethodPassword}
               </button>
               <button
                 onClick={() => { setAuthMethod('otp'); setError(''); setOtpSent(false); }}
                 className={`flex items-center gap-1.5 border-b-2 px-1 pb-2.5 text-sm font-medium transition-colors ${authMethod === 'otp' ? 'border-zubkas-700 text-zubkas-700' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
               >
                 <KeyRound className="h-3.5 w-3.5" />
-                OTP Login
+                {c.loginMethodOtp}
               </button>
             </div>
 
@@ -246,7 +250,7 @@ export function LoginPage({ onBack }: LoginPageProps) {
             {authMethod === 'password' && (
               <form onSubmit={handlePasswordLogin} className="mt-6 space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Email</label>
+                  <label className="text-sm font-medium text-gray-700">{c.loginEmailLabel}</label>
                   <div className="relative mt-1.5">
                     <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                     <input
@@ -260,7 +264,7 @@ export function LoginPage({ onBack }: LoginPageProps) {
                   </div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Password</label>
+                  <label className="text-sm font-medium text-gray-700">{c.loginPasswordLabel}</label>
                   <div className="relative mt-1.5">
                     <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                     <input
@@ -281,7 +285,7 @@ export function LoginPage({ onBack }: LoginPageProps) {
                   </div>
                 </div>
                 <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-base">
-                  {loading ? 'Signing in...' : 'Sign In'}
+                  {loading ? 'Signing in...' : c.loginSignInButton}
                   {!loading && <ArrowRight className="h-4 w-4" />}
                 </button>
               </form>
@@ -291,7 +295,7 @@ export function LoginPage({ onBack }: LoginPageProps) {
             {authMethod === 'otp' && !otpSent && (
               <form onSubmit={handleSendOtp} className="mt-6 space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Email</label>
+                  <label className="text-sm font-medium text-gray-700">{c.loginEmailLabel}</label>
                   <div className="relative mt-1.5">
                     <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                     <input
@@ -305,7 +309,7 @@ export function LoginPage({ onBack }: LoginPageProps) {
                   </div>
                 </div>
                 <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-base">
-                  {loading ? 'Sending...' : 'Send OTP'}
+                  {loading ? 'Sending...' : c.loginSendOtpButton}
                   {!loading && <ArrowRight className="h-4 w-4" />}
                 </button>
               </form>
@@ -315,10 +319,10 @@ export function LoginPage({ onBack }: LoginPageProps) {
               <form onSubmit={handleVerifyOtp} className="mt-6 space-y-4">
                 <div className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700 flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 shrink-0" />
-                  OTP sent to {email}. Please enter the 6-digit code to continue.
+                  {c.loginOtpSentPrefix} {email}. {c.loginOtpSentSuffix}
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Enter 6-digit OTP</label>
+                  <label className="text-sm font-medium text-gray-700">{c.loginOtpLabel}</label>
                   <input
                     type="text"
                     required
@@ -330,11 +334,11 @@ export function LoginPage({ onBack }: LoginPageProps) {
                   />
                 </div>
                 <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-base">
-                  {loading ? 'Verifying...' : 'Verify & Sign In'}
+                  {loading ? 'Verifying...' : c.loginVerifyButton}
                   {!loading && <ArrowRight className="h-4 w-4" />}
                 </button>
                 <button type="button" onClick={() => setOtpSent(false)} className="btn-ghost w-full">
-                  Change email
+                  {c.loginChangeEmailButton}
                 </button>
               </form>
             )}
@@ -348,20 +352,20 @@ export function LoginPage({ onBack }: LoginPageProps) {
               className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-zubkas-200 bg-zubkas-50 py-3 text-sm font-semibold text-zubkas-700 transition-all hover:bg-zubkas-100 hover:border-zubkas-300"
             >
               <Download className="h-4 w-4" />
-              Install Zubkas App
+              {c.loginInstallButton}
             </button>
           )}
           {isInstalled && (
             <div className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-emerald-50 py-3 text-sm font-medium text-emerald-700">
               <CheckCircle2 className="h-4 w-4" />
-              App installed
+              {c.loginInstalledText}
             </div>
           )}
         </div>
 
         {/* Footer */}
         <div className="absolute bottom-0 left-0 right-0 px-6 py-4 text-center">
-          <span className="text-xs text-gray-400">Powered by <span className="font-display font-bold text-zubkas-700">Zubkas</span></span>
+          <span className="text-xs text-gray-400">{c.loginFooterPoweredBy} <span className="font-display font-bold text-zubkas-700">Zubkas</span></span>
         </div>
       </div>
     </div>

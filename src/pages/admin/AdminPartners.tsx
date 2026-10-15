@@ -10,7 +10,7 @@ import type { Partner } from '@/types';
 const badgeIcons: Record<string, typeof Crown> = { 'Top Performer': Crown, 'Rising Star': Star, 'Consistent Earner': Award, 'New Champion': Rocket };
 
 export function AdminPartners() {
-  const { partners, customers, leads, transactions, categories, addPartner, updatePartner, deletePartner, partnerPasswords } = useApp();
+  const { partners, customers, leads, transactions, categories, plans, addPartner, updatePartner, deletePartner, partnerPasswords } = useApp();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [showAdd, setShowAdd] = useState(false);
@@ -20,7 +20,7 @@ export function AdminPartners() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', company: '', category: '', status: 'Active' as Partner['status'] });
 
-  const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', category: categories[0]?.name ?? '', password: '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', category: categories[0]?.name ?? '', password: '', planId: '' });
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [revealedPasswords, setRevealedPasswords] = useState<Set<string>>(new Set());
@@ -38,8 +38,8 @@ export function AdminPartners() {
     setSubmitError(null);
     setSubmitting(true);
     try {
-      await addPartner({ name: form.name, email: form.email, phone: form.phone, company: form.company, category: form.category, status: 'Active', joinedDate: new Date().toISOString().split('T')[0], password: form.password });
-      setForm({ name: '', email: '', phone: '', company: '', category: categories[0]?.name ?? '', password: '' });
+      await addPartner({ name: form.name, email: form.email, phone: form.phone, company: form.company, category: form.category, status: 'Active', joinedDate: new Date().toISOString().split('T')[0], password: form.password, planId: form.planId || undefined });
+      setForm({ name: '', email: '', phone: '', company: '', category: categories[0]?.name ?? '', password: '', planId: '' });
       setShowAdd(false);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Failed to create partner. Please try again.');
@@ -165,11 +165,21 @@ export function AdminPartners() {
             <label className="text-sm font-medium text-gray-700">Company Name</label>
             <input required value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} className="input-field mt-1" placeholder="Company Pvt Ltd" />
           </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700">Category</label>
-            <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="input-field mt-1">
-              {categories.map(c => <option key={c.id}>{c.name}</option>)}
-            </select>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="text-sm font-medium text-gray-700">Category</label>
+              <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="input-field mt-1">
+                {categories.map(c => <option key={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Commission Plan</label>
+              <select value={form.planId} onChange={(e) => setForm({ ...form, planId: e.target.value })} className="input-field mt-1">
+                <option value="">— No plan assigned —</option>
+                {plans.map(p => <option key={p.id} value={p.id}>{p.name} ({p.commissionRate}%)</option>)}
+              </select>
+              <p className="text-xs text-gray-400 mt-1">Assigning a plan auto-fills its commission rate when managing payments for this partner's leads.</p>
+            </div>
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700">Password</label>
