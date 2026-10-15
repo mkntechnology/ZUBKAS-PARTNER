@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Layers, Percent, Trash2, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle2, X } from 'lucide-react';
+import { Plus, Layers, Percent, Trash2, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle2, X, IndianRupee } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader } from '@/components/Shared';
 import { Modal } from '@/components/Modal';
@@ -8,14 +8,21 @@ import type { Plan } from '@/types';
 export function AdminPlans() {
   const { plans, addPlan, deletePlan } = useApp();
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name: '', commissionRate: '10', description: '', features: [''] });
+  const [form, setForm] = useState({ name: '', price: '', commissionRate: '10', type: 'Monthly' as Plan['type'], description: '', features: [''] });
   const [deleteTarget, setDeleteTarget] = useState<Plan | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanFeatures = form.features.map(f => f.trim()).filter(Boolean);
-    addPlan({ name: form.name, commissionRate: Number(form.commissionRate), type: 'Monthly', description: form.description, features: cleanFeatures });
-    setForm({ name: '', commissionRate: '10', description: '', features: [''] });
+    addPlan({
+      name: form.name,
+      price: form.price ? Number(form.price) : null,
+      commissionRate: Number(form.commissionRate),
+      type: form.type,
+      description: form.description,
+      features: cleanFeatures,
+    });
+    setForm({ name: '', price: '', commissionRate: '10', type: 'Monthly', description: '', features: [''] });
     setShowAdd(false);
   };
 
@@ -36,7 +43,7 @@ export function AdminPlans() {
       <SectionHeader
         title="Plans & Commission Rates"
         subtitle="Manage subscription plans and partner commission percentages"
-        action={<button onClick={() => setShowAdd(true)} className="btn-primary"><Plus className="h-4 w-4" /> Add Custom Plan</button>}
+        action={<button onClick={() => setShowAdd(true)} className="btn-primary"><Plus className="h-4 w-4" /> Add Plan</button>}
       />
 
       <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-800">
@@ -46,17 +53,14 @@ export function AdminPlans() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {plans.map(p => (
-          <div key={p.id} className={`card p-5 ${p.isCustom ? 'border-zubkas-200' : ''}`}>
+          <div key={p.id} className="card p-5">
             <div className="flex items-start justify-between">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zubkas-50">
                 <Layers className="h-5 w-5 text-zubkas-700" />
               </div>
-              <div className="flex items-center gap-1">
-                {p.isCustom && <span className="badge badge-zubkas">Custom</span>}
-                <button onClick={() => setDeleteTarget(p)} className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors" title="Delete plan">
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
+              <button onClick={() => setDeleteTarget(p)} className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors" title="Delete plan">
+                <Trash2 className="h-4 w-4" />
+              </button>
             </div>
             <h3 className="mt-3 font-display font-semibold text-gray-900">{p.name}</h3>
             <p className="mt-1 text-sm text-gray-500">{p.description}</p>
@@ -71,6 +75,13 @@ export function AdminPlans() {
               </div>
             )}
             <div className="mt-4 flex items-center gap-4">
+              {p.price != null && p.price > 0 && (
+                <div className="flex items-center gap-1">
+                  <IndianRupee className="h-4 w-4 text-gray-600" />
+                  <span className="text-lg font-bold text-gray-900">{p.price.toLocaleString('en-IN')}</span>
+                  <span className="text-xs text-gray-500">{p.type === 'Yearly' ? '/yr' : '/mo'}</span>
+                </div>
+              )}
               <div className="flex items-center gap-1.5">
                 <Percent className="h-4 w-4 text-zubkas-700" />
                 <span className="text-lg font-bold text-zubkas-700">{p.commissionRate}%</span>
@@ -81,11 +92,28 @@ export function AdminPlans() {
         ))}
       </div>
 
-      <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Add Custom Plan">
+      <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Add Plan">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="text-sm font-medium text-gray-700">Plan Name</label>
             <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input-field mt-1" placeholder="e.g. Enterprise Plan" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700">Plan Price (₹)</label>
+              <div className="relative mt-1">
+                <IndianRupee className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input type="number" min="0" step="1" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="input-field pl-9" placeholder="999" />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Billing Cycle</label>
+              <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as Plan['type'] })} className="input-field mt-1">
+                <option value="Monthly">Monthly</option>
+                <option value="Yearly">Yearly</option>
+              </select>
+              <p className="mt-1 text-xs text-gray-400">Leave price blank if the plan is free.</p>
+            </div>
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700">Commission Rate (%)</label>

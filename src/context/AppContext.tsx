@@ -593,7 +593,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // ===== PLANS =====
   const addPlan: AppContextValue['addPlan'] = useCallback((p) => {
-    plansHook.insertRow({ ...p, id: '', isCustom: true });
+    plansHook.insertRow({ ...p, id: '', isCustom: false });
   }, [plansHook]);
 
   const deletePlan: AppContextValue['deletePlan'] = useCallback((id) => {

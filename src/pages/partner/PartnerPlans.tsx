@@ -1,4 +1,4 @@
-import { Layers, Percent, CheckCircle2, Calendar } from 'lucide-react';
+import { Layers, Percent, CircleCheck as CheckCircle2, Calendar, IndianRupee } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader } from '@/components/Shared';
 
@@ -19,18 +19,24 @@ export function PartnerPlans() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {plans.map(p => (
-          <div key={p.id} className={`card p-5 flex flex-col ${p.isCustom ? 'border-zubkas-200' : ''}`}>
+          <div key={p.id} className="card p-5 flex flex-col">
             <div className="flex items-start justify-between">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-zubkas-50">
                 <Layers className="h-6 w-6 text-zubkas-700" />
               </div>
-              {p.isCustom && <span className="badge badge-zubkas">Custom</span>}
             </div>
 
             <h3 className="mt-3 font-display font-semibold text-gray-900">{p.name}</h3>
             <p className="mt-1 text-sm text-gray-500 flex-1">{p.description}</p>
 
             <div className="mt-4 flex items-center gap-3">
+              {p.price != null && p.price > 0 && (
+                <div className="flex items-center gap-1">
+                  <IndianRupee className="h-5 w-5 text-gray-700" />
+                  <span className="text-2xl font-bold text-gray-900">{p.price.toLocaleString('en-IN')}</span>
+                  <span className="text-xs text-gray-500">{p.type === 'Yearly' ? '/yr' : '/mo'}</span>
+                </div>
+              )}
               <div className="flex items-center gap-1.5">
                 <Percent className="h-4 w-4 text-zubkas-700" />
                 <span className="text-2xl font-bold text-zubkas-700">{p.commissionRate}%</span>

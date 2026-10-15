@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Bell, Trash2, Power, PowerOff, Image as ImageIcon, Users, User as UserIcon } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Plus, Bell, Trash2, Power, PowerOff, Image as ImageIcon, Users, User as UserIcon, Upload, Loader as Loader2, X, Link as LinkIcon } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader, EmptyState } from '@/components/Shared';
 import { Modal } from '@/components/Modal';
@@ -12,6 +12,8 @@ const targetLabels: Record<Popup['targetType'], string> = {
   all_employees: 'All Employees',
   specific_employee: 'Specific Employee',
 };
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
 export function AdminPopups() {
   const { popups, partners, employees, addPopup, updatePopup, deletePopup } = useApp();
@@ -26,6 +28,53 @@ export function AdminPopups() {
     isActive: true,
   });
 
+  // Image upload state
+  const [imageMode, setImageMode] = useState<'upload' | 'url'>('upload');
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const resetImageState = () => {
+    setImagePreview(null);
+    setUploadError(null);
+    setUploading(false);
+    setForm(f => ({ ...f, imageUrl: '' }));
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadError(null);
+
+    if (file.size > MAX_FILE_SIZE) {
+      setUploadError('Image must be 5 MB or smaller.');
+      return;
+    }
+
+    const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+    if (!allowed.includes(file.type)) {
+      setUploadError('Only JPG, PNG, GIF, WebP, and SVG images are allowed.');
+      return;
+    }
+
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setImagePreview(dataUrl);
+      setForm(f => ({ ...f, imageUrl: dataUrl }));
+      setUploading(false);
+    };
+    reader.onerror = () => {
+      setUploadError('Failed to read the image file. Please try again.');
+      setUploading(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     addPopup({
@@ -37,6 +86,8 @@ export function AdminPopups() {
       isActive: form.isActive,
     });
     setForm({ title: '', content: '', imageUrl: '', targetType: 'all_partners', targetId: '', isActive: true });
+    resetImageState();
+    setImageMode('upload');
     setShowAdd(false);
   };
 
@@ -117,14 +168,95 @@ export function AdminPopups() {
             <label className="text-sm font-medium text-gray-700">Content / Message</label>
             <textarea required value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} className="input-field mt-1 min-h-24" placeholder="The message to display in the popup" />
           </div>
+
+          {/* Image section — upload or URL */}
           <div>
-            <label className="text-sm font-medium text-gray-700">Image URL <span className="text-gray-400 font-normal">(optional)</span></label>
-            <div className="relative mt-1">
-              <ImageIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} className="input-field pl-9" placeholder="https://example.com/image.jpg" />
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-gray-700">Popup Image <span className="text-gray-400 font-normal">(optional)</span></label>
+              <div className="flex rounded-lg bg-gray-100 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => { setImageMode('upload'); resetImageState(); }}
+                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${imageMode === 'upload' ? 'bg-white text-zubkas-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  Upload
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setImageMode('url'); resetImageState(); }}
+                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${imageMode === 'url' ? 'bg-white text-zubkas-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  <LinkIcon className="h-3.5 w-3.5" />
+                  URL
+                </button>
+              </div>
             </div>
-            <p className="mt-1 text-xs text-gray-400">Paste a direct link to an image. It will be displayed at the top of the popup.</p>
+
+            {imageMode === 'upload' ? (
+              <div>
+                {!imagePreview && !uploading && (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50 px-4 py-8 text-center transition-all hover:border-zubkas-300 hover:bg-zubkas-50/30"
+                  >
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zubkas-50">
+                      <Upload className="h-6 w-6 text-zubkas-700" />
+                    </div>
+                    <p className="mt-3 text-sm font-medium text-gray-700">Click to upload an image</p>
+                    <p className="text-xs text-gray-400 mt-1">JPG, PNG, GIF, WebP or SVG — up to 5 MB</p>
+                  </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                {uploading && (
+                  <div className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-8">
+                    <Loader2 className="h-5 w-5 text-zubkas-700 animate-spin" />
+                    <p className="text-sm text-gray-600">Processing image…</p>
+                  </div>
+                )}
+                {imagePreview && !uploading && (
+                  <div className="relative rounded-xl border border-gray-200 overflow-hidden">
+                    <img src={imagePreview} alt="Popup preview" className="w-full max-h-48 object-contain bg-gray-50" />
+                    <button
+                      type="button"
+                      onClick={resetImageState}
+                      className="absolute top-2 right-2 rounded-full bg-white/90 p-1.5 text-gray-600 shadow-md transition-colors hover:bg-white hover:text-red-600"
+                      title="Remove image"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                    <div className="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 text-xs text-emerald-700">
+                      <ImageIcon className="h-3.5 w-3.5" />
+                      Image uploaded successfully
+                    </div>
+                  </div>
+                )}
+                {uploadError && (
+                  <p className="mt-2 text-xs text-red-600">{uploadError}</p>
+                )}
+              </div>
+            ) : (
+              <div>
+                <div className="relative mt-1">
+                  <ImageIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} className="input-field pl-9" placeholder="https://example.com/image.jpg" />
+                </div>
+                <p className="mt-1 text-xs text-gray-400">Paste a direct link to an image. It will be displayed at the top of the popup.</p>
+                {form.imageUrl && (
+                  <div className="mt-2 rounded-xl border border-gray-200 overflow-hidden">
+                    <img src={form.imageUrl} alt="Preview" className="w-full max-h-32 object-contain bg-gray-50" onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0.3'; }} />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
+
           <div>
             <label className="text-sm font-medium text-gray-700">Target Audience</label>
             <select value={form.targetType} onChange={(e) => setForm({ ...form, targetType: e.target.value as Popup['targetType'], targetId: '' })} className="input-field mt-1">
@@ -159,7 +291,9 @@ export function AdminPopups() {
               <span className="text-sm font-medium text-gray-700">{form.isActive ? 'Active — visible immediately' : 'Inactive — hidden from portals'}</span>
             </label>
           </div>
-          <button type="submit" className="btn-primary w-full">Create Popup</button>
+          <button type="submit" disabled={uploading} className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed">
+            {uploading ? 'Processing…' : 'Create Popup'}
+          </button>
         </form>
       </Modal>
 

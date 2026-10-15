@@ -38,6 +38,7 @@ export interface Plan {
   type: 'Monthly' | 'Yearly';
   description: string;
   features: string[];
+  price?: number | null;
   isCustom?: boolean;
 }
 
