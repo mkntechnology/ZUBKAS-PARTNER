@@ -64,6 +64,7 @@ interface AppContextValue {
   addCategory: (c: Omit<Category, 'id'>) => Promise<void>;
   deleteCategory: (id: string) => void;
   addPlan: (p: Omit<Plan, 'id'>) => void;
+  updatePlan: (id: string, updates: Partial<Omit<Plan, 'id'>>) => void;
   deletePlan: (id: string) => void;
   addPopup: (p: Omit<Popup, 'id' | 'createdAt'>) => void;
   updatePopup: (id: string, updates: Partial<Omit<Popup, 'id'>>) => void;
@@ -596,6 +597,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     plansHook.insertRow({ ...p, id: '', isCustom: false });
   }, [plansHook]);
 
+  const updatePlan: AppContextValue['updatePlan'] = useCallback((id, updates) => {
+    plansHook.updateRow(id, updates);
+  }, [plansHook]);
+
   const deletePlan: AppContextValue['deletePlan'] = useCallback((id) => {
     plansHook.deleteRow(id);
   }, [plansHook]);
@@ -1041,7 +1046,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       partners, customers, leads, employees, categories, announcements, notifications, plans, products,
       settings: settingsState, siteContent, transactions, roles, popups,
       hasPermission, getEmployeePermissions, addRole, updateRole, deleteRole, assignEmployeeRole,
-      addPartner, updatePartner, deletePartner, addEmployee, updateEmployee, deleteEmployee, addCategory, deleteCategory, addPlan, deletePlan, addPopup, updatePopup, deletePopup, addProduct, deleteProduct, addAnnouncement, deleteAnnouncement, addLead, adminAddLead, deleteLead, updateLeadStatus, approveLead, updateLeadPayment, convertLead, addCustomer, deleteCustomer,
+      addPartner, updatePartner, deletePartner, addEmployee, updateEmployee, deleteEmployee, addCategory, deleteCategory, addPlan, updatePlan, deletePlan, addPopup, updatePopup, deletePopup, addProduct, deleteProduct, addAnnouncement, deleteAnnouncement, addLead, adminAddLead, deleteLead, updateLeadStatus, approveLead, updateLeadPayment, convertLead, addCustomer, deleteCustomer,
       markNotificationRead, markAllRead,
       readAnnouncementIds, dismissedAnnouncementIds, dismissedNotificationIds,
       setReadAnnouncementIds, setDismissedAnnouncementIds, setDismissedNotificationIds,
