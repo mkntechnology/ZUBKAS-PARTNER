@@ -80,7 +80,7 @@ function buildTransactionsFromLeadsAndCustomers(
 }
 
 export function PartnerCommissions() {
-  const { currentUser, partners, customers, leads, settings, plans, transactions } = useApp();
+  const { currentUser, partners, customers, leads, settings, plans, transactions, siteContent } = useApp();
   const [view, setView] = useState<'all' | 'active' | 'unpaid' | 'capped'>('all');
   const [txFilter, setTxFilter] = useState<'All' | 'Paid' | 'Pending' | 'Blocked'>('All');
 
@@ -146,25 +146,23 @@ export function PartnerCommissions() {
             <p className="text-sm font-semibold text-zubkas-800">Commission Rules & Rates</p>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <div className="rounded-lg bg-white p-3">
-                <p className="text-xs font-medium text-gray-500">Free Plan</p>
-                <p className="text-lg font-bold text-zubkas-700">{freePlan?.commissionRate ?? 5}% commission</p>
-                <p className="text-xs text-gray-400">Monthly recurring</p>
+                <p className="text-xs font-medium text-gray-500">{siteContent.commissionFreeTitle || 'Free Plan'}</p>
+                <p className="text-lg font-bold text-zubkas-700">{(siteContent.commissionFreeValue || '{rate}% commission').replace('{rate}', String(freePlan?.commissionRate ?? 5))}</p>
+                <p className="text-xs text-gray-400">{siteContent.commissionFreeDesc || 'Monthly recurring'}</p>
               </div>
               <div className="rounded-lg bg-white p-3">
-                <p className="text-xs font-medium text-gray-500">Premium Plan</p>
-                <p className="text-lg font-bold text-zubkas-700">{premiumPlan?.commissionRate ?? 15}% commission</p>
-                <p className="text-xs text-gray-400">Monthly or yearly</p>
+                <p className="text-xs font-medium text-gray-500">{siteContent.commissionPremiumTitle || 'Premium Plan'}</p>
+                <p className="text-lg font-bold text-zubkas-700">{(siteContent.commissionPremiumValue || '{rate}% commission').replace('{rate}', String(premiumPlan?.commissionRate ?? 15))}</p>
+                <p className="text-xs text-gray-400">{siteContent.commissionPremiumDesc || 'Monthly or yearly'}</p>
               </div>
               <div className="rounded-lg bg-white p-3">
-                <p className="text-xs font-medium text-gray-500">1-Year Cap</p>
-                <p className="text-lg font-bold text-zubkas-700">{settings.commissionCapMonths} months max</p>
-                <p className="text-xs text-gray-400">Then payout stops</p>
+                <p className="text-xs font-medium text-gray-500">{siteContent.commissionCapTitle || '1-Year Cap'}</p>
+                <p className="text-lg font-bold text-zubkas-700">{(siteContent.commissionCapValue || '{capMonths} months max').replace(/\{capMonths\}/g, String(settings.commissionCapMonths))}</p>
+                <p className="text-xs text-gray-400">{siteContent.commissionCapDesc || 'Then payout stops'}</p>
               </div>
             </div>
-            <p className="text-xs text-zubkas-700 mt-3">
-              Monthly plans: Earn commission every month for up to {settings.commissionCapMonths} months from the subscription start date. After {settings.commissionCapMonths} months, commission payout stops automatically.
-              Yearly plans: Earn a one-time lump-sum commission for that year.
-              Unpaid customers: Commission is automatically blocked for that month and resumes once payment is received.
+            <p className="text-xs text-zubkas-700 mt-3 whitespace-pre-line">
+              {(siteContent.commissionRulesNotice || '').replace(/\{capMonths\}/g, String(settings.commissionCapMonths))}
             </p>
           </div>
         </div>

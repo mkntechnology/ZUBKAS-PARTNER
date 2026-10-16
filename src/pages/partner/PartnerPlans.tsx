@@ -3,18 +3,18 @@ import { useApp } from '@/context/AppContext';
 import { SectionHeader } from '@/components/Shared';
 
 export function PartnerPlans() {
-  const { plans } = useApp();
+  const { plans, siteContent } = useApp();
 
   return (
     <div className="space-y-6">
       <SectionHeader
-        title="Plans & Features"
-        subtitle="Subscription plans and commission rates available for your referrals"
+        title={siteContent.plansHeaderTitle || 'Plans & Features'}
+        subtitle={siteContent.plansHeaderSubtitle || 'Subscription plans and commission rates available for your referrals'}
       />
 
       <div className="rounded-xl bg-gradient-to-r from-zubkas-700 to-zubkas-800 p-6 text-white">
-        <h3 className="font-display text-lg font-bold">Earn Commission on Every Referral</h3>
-        <p className="text-sm text-zubkas-100 mt-1">Refer customers to any Zubkas plan and earn recurring commission for up to 12 months on monthly plans, or a one-time lump-sum on yearly plans.</p>
+        <h3 className="font-display text-lg font-bold">{siteContent.plansBannerHeading || 'Earn Commission on Every Referral'}</h3>
+        <p className="text-sm text-zubkas-100 mt-1">{siteContent.plansBannerDesc || 'Refer customers to any Zubkas plan and earn recurring commission for up to 12 months on monthly plans, or a one-time lump-sum on yearly plans.'}</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

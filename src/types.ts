@@ -3,7 +3,7 @@ export type UserRole = 'admin' | 'employee' | 'partner';
 export type AdminSectionKey =
   | 'dashboard' | 'partners' | 'leads' | 'employees' | 'categories'
   | 'plans' | 'products' | 'content' | 'announcements' | 'leaderboard'
-  | 'settings' | 'roles' | 'support' | 'popups';
+  | 'settings' | 'roles' | 'support' | 'popups' | 'customer-payments' | 'customer-history';
 
 export interface Role {
   id: string;
@@ -205,6 +205,17 @@ export interface CommissionTransaction {
   status: 'Paid' | 'Pending' | 'Blocked';
 }
 
+export interface CustomerPayment {
+  id: string;
+  customerId: string;
+  amount: number;
+  periodLabel: string;
+  planType: PlanType;
+  paymentDate: string;
+  notes: string;
+  recordedBy: string;
+}
+
 export interface SiteContent {
   // Landing page
   landingBadge: string;
@@ -315,6 +326,34 @@ export interface SiteContent {
   loginInstallButton: string;
   loginInstalledText: string;
   loginFooterPoweredBy: string;
+  // Partner panel
+  commissionRulesNotice: string;
+  commissionFreeTitle: string;
+  commissionFreeValue: string;
+  commissionFreeDesc: string;
+  commissionPremiumTitle: string;
+  commissionPremiumValue: string;
+  commissionPremiumDesc: string;
+  commissionCapTitle: string;
+  commissionCapValue: string;
+  commissionCapDesc: string;
+  // Partner panel — Plans & Features
+  plansHeaderTitle: string;
+  plansHeaderSubtitle: string;
+  plansBannerHeading: string;
+  plansBannerDesc: string;
+  // Partner panel — Leaderboard & Badges
+  leaderboardHeaderTitle: string;
+  leaderboardHeaderSubtitle: string;
+  leaderboardBadgeSystemTitle: string;
+  leaderboardBadgeSystemDesc: string;
+  leaderboardEmptyTitle: string;
+  leaderboardEmptyMsg: string;
+  // Partner panel — Products Suite
+  productsHeaderTitle: string;
+  productsHeaderSubtitle: string;
+  productsBannerHeading: string;
+  productsBannerDesc: string;
 }
 
 export interface ChatMessage {

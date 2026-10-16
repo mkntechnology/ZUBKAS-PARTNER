@@ -7,15 +7,15 @@ const iconMap: Record<string, typeof Package> = {
 };
 
 export function PartnerProducts() {
-  const { products } = useApp();
+  const { products, siteContent } = useApp();
 
   return (
     <div className="space-y-6">
-      <SectionHeader title="Products Suite" subtitle="Zubkas products you can refer and earn commission on" />
+      <SectionHeader title={siteContent.productsHeaderTitle || 'Products Suite'} subtitle={siteContent.productsHeaderSubtitle || 'Zubkas products you can refer and earn commission on'} />
 
       <div className="rounded-xl bg-gradient-to-r from-zubkas-700 to-zubkas-800 p-6 text-white">
-        <h3 className="font-display text-lg font-bold">Earn Commission on Every Referral</h3>
-        <p className="text-sm text-zubkas-100 mt-1">Refer customers to any Zubkas product and earn up to 15% recurring commission for 12 months on monthly plans, or a one-time lump-sum on yearly plans.</p>
+        <h3 className="font-display text-lg font-bold">{siteContent.productsBannerHeading || 'Earn Commission on Every Referral'}</h3>
+        <p className="text-sm text-zubkas-100 mt-1">{siteContent.productsBannerDesc || 'Refer customers to any Zubkas product and earn up to 15% recurring commission for 12 months on monthly plans, or a one-time lump-sum on yearly plans.'}</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

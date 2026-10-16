@@ -11,7 +11,7 @@ const iconMap: Record<string, typeof Crown> = {
 const badgeIcons: Record<string, typeof Crown> = { 'Top Performer': Crown, 'Rising Star': Star, 'Consistent Earner': Award, 'New Champion': Rocket, 'Lead Master': Target };
 
 export function PartnerLeaderboard() {
-  const { currentUser, partners, customers, leads, transactions } = useApp();
+  const { currentUser, partners, customers, leads, transactions, siteContent } = useApp();
   const partner = partners.find(p => p.id === currentUser?.partnerId);
 
   const badges = getBadges();
@@ -20,7 +20,7 @@ export function PartnerLeaderboard() {
 
   return (
     <div className="space-y-6">
-      <SectionHeader title="Leaderboard & Badges" subtitle="See how you rank among all partners" />
+      <SectionHeader title={siteContent.leaderboardHeaderTitle || 'Leaderboard & Badges'} subtitle={siteContent.leaderboardHeaderSubtitle || 'See how you rank among all partners'} />
 
       {/* My rank */}
       {partner && (
@@ -45,8 +45,8 @@ export function PartnerLeaderboard() {
 
       {/* Badges legend */}
       <div className="card p-5">
-        <h3 className="font-display font-semibold text-gray-900 mb-3">Badge System</h3>
-        <p className="text-xs text-gray-500 mb-3">Badges are earned automatically when you reach milestones. Keep growing to unlock them!</p>
+        <h3 className="font-display font-semibold text-gray-900 mb-3">{siteContent.leaderboardBadgeSystemTitle || 'Badge System'}</h3>
+        <p className="text-xs text-gray-500 mb-3">{siteContent.leaderboardBadgeSystemDesc || 'Badges are earned automatically when you reach milestones. Keep growing to unlock them!'}</p>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {badges.map(b => {
             const Icon = badgeIcons[b.name] ?? Award;
@@ -81,7 +81,7 @@ export function PartnerLeaderboard() {
             </div>
             <div className="space-y-2">
               {section.entries.length === 0 ? (
-                <EmptyState icon={Trophy} title="No data yet" message="Partners will appear here once they have activity" />
+                <EmptyState icon={Trophy} title={siteContent.leaderboardEmptyTitle || 'No data yet'} message={siteContent.leaderboardEmptyMsg || 'Partners will appear here once they have activity'} />
               ) : (
                 section.entries.map((entry, i) => {
                   const isMe = entry.partnerId === currentUser?.partnerId;

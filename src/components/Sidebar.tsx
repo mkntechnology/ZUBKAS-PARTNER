@@ -1,10 +1,18 @@
+import { useState } from 'react';
 import { type LucideIcon } from 'lucide-react';
+
+interface NavChild {
+  key: string;
+  label: string;
+  icon: LucideIcon;
+}
 
 interface NavItem {
   key: string;
   label: string;
   icon: LucideIcon;
   badge?: number;
+  children?: NavChild[];
 }
 
 interface SidebarProps {
@@ -20,6 +28,16 @@ interface SidebarProps {
 
 export function Sidebar({ items, active, onNavigate, open, onClose, userName, userRole, variant }: SidebarProps) {
   const accentText = variant === 'admin' ? 'text-zubkas-700' : 'text-zubkas-700';
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
+
+  const toggleExpand = (key: string) => {
+    setExpandedKey(prev => (prev === key ? null : key));
+  };
+
+  const handleChildClick = (key: string) => {
+    onNavigate(key);
+    onClose();
+  };
 
   return (
     <>
@@ -58,20 +76,71 @@ export function Sidebar({ items, active, onNavigate, open, onClose, userName, us
           <div className="space-y-1">
             {items.map(item => {
               const isActive = active === item.key;
+              const hasChildren = item.children && item.children.length > 0;
+              const isExpanded = expandedKey === item.key;
+              const childActive = hasChildren && item.children!.some(c => c.key === active);
+
               return (
-                <button
-                  key={item.key}
-                  onClick={() => { onNavigate(item.key); onClose(); }}
-                  className={`nav-item w-full ${isActive ? 'nav-item-active' : ''}`}
-                >
-                  <item.icon className="h-[18px] w-[18px] shrink-0" />
-                  <span className="flex-1 text-left">{item.label}</span>
-                  {item.badge !== undefined && item.badge > 0 && (
-                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive ? 'bg-white/20 text-white' : 'bg-zubkas-700 text-white'}`}>
-                      {item.badge}
-                    </span>
+                <div key={item.key}>
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => {
+                        if (hasChildren) {
+                          toggleExpand(item.key);
+                          onNavigate(item.key);
+                        } else {
+                          onNavigate(item.key);
+                          onClose();
+                        }
+                      }}
+                      className={`nav-item w-full flex-1 ${isActive || (childActive && !isExpanded) ? 'nav-item-active' : ''} ${childActive ? 'nav-item-active' : ''}`}
+                    >
+                      <item.icon className="h-[18px] w-[18px] shrink-0" />
+                      <span className="flex-1 text-left">{item.label}</span>
+                      {item.badge !== undefined && item.badge > 0 && (
+                        <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${isActive || childActive ? 'bg-white/20 text-white' : 'bg-zubkas-700 text-white'}`}>
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                    {hasChildren && (
+                      <button
+                        onClick={() => toggleExpand(item.key)}
+                        className={`ml-1 rounded-md p-1 transition-colors ${isExpanded ? 'text-zubkas-700' : 'text-gray-400 hover:text-gray-600'}`}
+                        aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                      >
+                        <svg className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Submenu children */}
+                  {hasChildren && (
+                    <div className={`overflow-hidden transition-all duration-200 ${isExpanded ? 'max-h-48' : 'max-h-0'}`}>
+                      <div className="ml-5 mt-1 space-y-0.5 border-l border-gray-100 pl-2">
+                        {item.children!.map(child => {
+                          const childIsActive = active === child.key;
+                          return (
+                            <button
+                              key={child.key}
+                              onClick={() => handleChildClick(child.key)}
+                              className={`flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors ${
+                                childIsActive
+                                  ? 'bg-zubkas-50 font-medium text-zubkas-700'
+                                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                              }`}
+                            >
+                              <child.icon className="h-3.5 w-3.5 shrink-0" />
+                              <span className="flex-1 text-left text-xs">{child.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   )}
-                </button>
+                </div>
               );
             })}
           </div>

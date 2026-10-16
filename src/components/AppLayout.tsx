@@ -4,8 +4,14 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { type LucideIcon } from 'lucide-react';
 
+interface NavChild {
+  key: string;
+  label: string;
+  icon: LucideIcon;
+}
+
 interface AppLayoutProps {
-  sidebarItems: { key: string; label: string; icon: LucideIcon; badge?: number }[];
+  sidebarItems: { key: string; label: string; icon: LucideIcon; badge?: number; children?: NavChild[] }[];
   activePage: string;
   onNavigate: (page: string) => void;
   onNotificationNavigate?: (page: string, announcementId?: string) => void;

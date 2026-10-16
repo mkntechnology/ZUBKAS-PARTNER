@@ -3,7 +3,7 @@ import type {
   User, Partner, Customer, Lead, Employee, Category,
   Announcement, Notification, Plan, AppSettings, Product, SiteContent,
   CommissionTransaction, Role, AdminSectionKey, Popup,
-  ChatThread, ChatMessage, LeadPaymentStatus, PlanType,
+  ChatThread, ChatMessage, LeadPaymentStatus, PlanType, CustomerPayment,
 } from '@/types';
 import { appSettings as defaultAppSettings, defaultSiteContent, defaultRoles } from '@/data/mockData';
 import { usePersistentState } from '@/utils/usePersistentState';
@@ -45,6 +45,7 @@ interface AppContextValue {
   settings: AppSettings;
   siteContent: SiteContent;
   transactions: CommissionTransaction[];
+  customerPayments: CustomerPayment[];
   roles: Role[];
   popups: Popup[];
 
@@ -82,6 +83,8 @@ interface AppContextValue {
   adminAddLead: (l: { partnerId: string; companyName: string; contactName: string; email: string; phone: string; whatsapp: string; productId?: string; productName?: string; planType: PlanType; notes: string }) => void;
   addCustomer: (c: Omit<Customer, 'id' | 'commissionEarned' | 'commissionEndDate' | 'monthsElapsed' | 'remainingMonths'>) => void;
   deleteCustomer: (id: string) => void;
+  addCustomerPayment: (p: Omit<CustomerPayment, 'id'>) => Promise<void>;
+  deleteCustomerPayment: (id: string) => void;
   markNotificationRead: (id: string) => void;
   markAllRead: () => void;
 
@@ -132,6 +135,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const chatThreadsHook = useSupabaseCollection<ChatThread>('chat_threads', []);
   const chatMessagesHook = useSupabaseCollection<ChatMessage>('chat_messages', [], 'timestamp');
   const popupsHook = useSupabaseCollection<Popup>('popups', []);
+  const customerPaymentsHook = useSupabaseCollection<CustomerPayment>('customer_payments', []);
 
   // Site content — singleton JSON blob
   const [siteContent, setSiteContent] = useSupabaseSingleton<SiteContent>('site_content', defaultSiteContent, 'content');
@@ -312,12 +316,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { state: chatThreads } = chatThreadsHook;
   const { state: chatMessages } = chatMessagesHook;
   const { state: popups } = popupsHook;
+  const { state: customerPayments } = customerPaymentsHook;
 
   const allCollectionsLoaded = [
     partnersHook.loaded, customersHook.loaded, leadsHook.loaded, employeesHook.loaded,
     categoriesHook.loaded, announcementsHook.loaded, notificationsHook.loaded,
     plansHook.loaded, productsHook.loaded, transactionsHook.loaded, rolesHook.loaded,
-    chatThreadsHook.loaded, chatMessagesHook.loaded, popupsHook.loaded,
+    chatThreadsHook.loaded, chatMessagesHook.loaded, popupsHook.loaded, customerPaymentsHook.loaded,
   ].every(Boolean);
 
   useNotificationSound(announcements, notifications, dataLoaded && allCollectionsLoaded);
@@ -869,7 +874,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const deleteCustomer: AppContextValue['deleteCustomer'] = useCallback((id) => {
     customersHook.deleteRow(id);
-  }, [customersHook]);
+    customerPayments.filter(p => p.customerId === id).forEach(p => customerPaymentsHook.deleteRow(p.id));
+  }, [customersHook, customerPaymentsHook, customerPayments]);
+
+  const addCustomerPayment: AppContextValue['addCustomerPayment'] = useCallback(async (p) => {
+    await customerPaymentsHook.insertRow({ ...p, id: '' });
+  }, [customerPaymentsHook]);
+
+  const deleteCustomerPayment: AppContextValue['deleteCustomerPayment'] = useCallback((id) => {
+    customerPaymentsHook.deleteRow(id);
+  }, [customerPaymentsHook]);
 
   // ===== ANNOUNCEMENTS =====
   const addAnnouncement: AppContextValue['addAnnouncement'] = useCallback(async (a) => {
@@ -1044,9 +1058,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     <AppContext.Provider value={{
       currentUser, login, loginOtp, logout, dataLoaded: dataLoaded && usersLoaded && allCollectionsLoaded,
       partners, customers, leads, employees, categories, announcements, notifications, plans, products,
-      settings: settingsState, siteContent, transactions, roles, popups,
+      settings: settingsState, siteContent, transactions, customerPayments, roles, popups,
       hasPermission, getEmployeePermissions, addRole, updateRole, deleteRole, assignEmployeeRole,
-      addPartner, updatePartner, deletePartner, addEmployee, updateEmployee, deleteEmployee, addCategory, deleteCategory, addPlan, updatePlan, deletePlan, addPopup, updatePopup, deletePopup, addProduct, deleteProduct, addAnnouncement, deleteAnnouncement, addLead, adminAddLead, deleteLead, updateLeadStatus, approveLead, updateLeadPayment, convertLead, addCustomer, deleteCustomer,
+      addPartner, updatePartner, deletePartner, addEmployee, updateEmployee, deleteEmployee, addCategory, deleteCategory, addPlan, updatePlan, deletePlan, addPopup, updatePopup, deletePopup, addProduct, deleteProduct, addAnnouncement, deleteAnnouncement, addLead, adminAddLead, deleteLead, updateLeadStatus, approveLead, updateLeadPayment, convertLead, addCustomer, deleteCustomer, addCustomerPayment, deleteCustomerPayment,
       markNotificationRead, markAllRead,
       readAnnouncementIds, dismissedAnnouncementIds, dismissedNotificationIds,
       setReadAnnouncementIds, setDismissedAnnouncementIds, setDismissedNotificationIds,

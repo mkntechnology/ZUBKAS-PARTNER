@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { usePersistentState } from '@/utils/usePersistentState';
-import { LayoutDashboard, Users, Settings, FolderTree, Layers, Megaphone, Trophy, Target, Bell, User as UserIcon, DollarSign, Package, CircleUser as UserCircle, Type, ShieldCheck, MessageSquare as Popups } from 'lucide-react';
+import { LayoutDashboard, Users, Settings, FolderTree, Layers, Megaphone, Trophy, Target, Bell, User as UserIcon, DollarSign, Package, CircleUser as UserCircle, Type, ShieldCheck, MessageSquare as Popups, History, PlusCircle } from 'lucide-react';
 import { AppProvider, useApp } from '@/context/AppContext';
 import { AppLayout } from '@/components/AppLayout';
 import { LandingPage } from '@/pages/LandingPage';
@@ -22,6 +22,8 @@ import { AdminContentManager } from '@/pages/admin/AdminContentManager';
 import { AdminProfile } from '@/pages/admin/AdminProfile';
 import { AdminRoles } from '@/pages/admin/AdminRoles';
 import { AdminPopups } from '@/pages/admin/AdminPopups';
+import { AdminAddRecords } from '@/pages/admin/AdminAddRecords';
+import { AdminViewHistory } from '@/pages/admin/AdminViewHistory';
 
 // Partner pages
 import { PartnerDashboard } from '@/pages/partner/PartnerDashboard';
@@ -39,7 +41,10 @@ const adminNavItems = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { key: 'partners', label: 'Partners', icon: Users },
   { key: 'leads', label: 'Leads', icon: Target },
-  { key: 'customers', label: 'Customers', icon: Users },
+  { key: 'customers', label: 'Customers', icon: Users, children: [
+    { key: 'customer-payments', label: 'Add Records', icon: PlusCircle },
+    { key: 'customer-history', label: 'View History', icon: History },
+  ] },
   { key: 'employees', label: 'Employees', icon: UserIcon },
   { key: 'categories', label: 'Categories', icon: FolderTree },
   { key: 'plans', label: 'Plans & Rates', icon: Layers },
@@ -92,10 +97,10 @@ function AdminPortal() {
   );
 
   const firstAccessibleKey = items[0]?.key ?? 'dashboard';
-  const activePage = items.some(item => item.key === page) ? page : firstAccessibleKey;
+  const activePage = (items.some(item => item.key === page) || items.some(item => item.children?.some(c => c.key === page))) ? page : firstAccessibleKey;
 
   useEffect(() => {
-    if (!items.some(item => item.key === page) && page !== firstAccessibleKey) {
+    if (!items.some(item => item.key === page) && !items.some(item => item.children?.some(c => c.key === page)) && page !== firstAccessibleKey) {
       setPage(firstAccessibleKey);
     }
   }, [items, page, firstAccessibleKey, setPage]);
@@ -106,6 +111,8 @@ function AdminPortal() {
       case 'partners': return <AdminPartners />;
       case 'leads': return <AdminLeads />;
       case 'customers': return <AdminCustomers />;
+      case 'customer-payments': return <AdminAddRecords />;
+      case 'customer-history': return <AdminViewHistory />;
       case 'employees': return <AdminEmployees />;
       case 'categories': return <AdminCategories />;
       case 'plans': return <AdminPlans />;

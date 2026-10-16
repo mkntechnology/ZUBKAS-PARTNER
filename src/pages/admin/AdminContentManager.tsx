@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Save, RotateCcw, LayoutDashboard, LogIn, Type, ChartBar as BarChart3, CircleCheck as CheckCircle2, CircleAlert as AlertCircle } from 'lucide-react';
+import { Save, RotateCcw, LayoutDashboard, LogIn, Type, ChartBar as BarChart3, CircleCheck as CheckCircle2, CircleAlert as AlertCircle, Users } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { SectionHeader } from '@/components/Shared';
 import { supabase } from '@/lib/supabase';
 import type { SiteContent } from '@/types';
 import { defaultSiteContent } from '@/data/mockData';
 
-type Tab = 'landing' | 'login';
+type Tab = 'landing' | 'login' | 'partner';
 
 interface FieldDef {
   key: keyof SiteContent;
@@ -143,6 +143,88 @@ const landingGroups: FieldGroup[] = [
   },
 ];
 
+const partnerGroups: FieldGroup[] = [
+  {
+    title: 'Free Plan Box',
+    fields: [
+      { key: 'commissionFreeTitle', label: 'Title', type: 'input' },
+      { key: 'commissionFreeValue', label: 'Commission Rate / Value Text', type: 'input' },
+      { key: 'commissionFreeDesc', label: 'Description', type: 'input' },
+    ],
+  },
+  {
+    title: 'Premium Plan Box',
+    fields: [
+      { key: 'commissionPremiumTitle', label: 'Title', type: 'input' },
+      { key: 'commissionPremiumValue', label: 'Commission Rate / Value Text', type: 'input' },
+      { key: 'commissionPremiumDesc', label: 'Description', type: 'input' },
+    ],
+  },
+  {
+    title: '1-Year Cap Box',
+    fields: [
+      { key: 'commissionCapTitle', label: 'Title', type: 'input' },
+      { key: 'commissionCapValue', label: 'Cap Value Text', type: 'input' },
+      { key: 'commissionCapDesc', label: 'Description', type: 'input' },
+    ],
+  },
+  {
+    title: 'Rules Notice Paragraph',
+    fields: [
+      { key: 'commissionRulesNotice', label: 'Commission Rules & Rates Notice Text', type: 'textarea' },
+    ],
+  },
+  {
+    title: 'Plans & Features — Section Header',
+    fields: [
+      { key: 'plansHeaderTitle', label: 'Section Title', type: 'input' },
+      { key: 'plansHeaderSubtitle', label: 'Section Subtitle', type: 'input' },
+    ],
+  },
+  {
+    title: 'Plans & Features — Banner',
+    fields: [
+      { key: 'plansBannerHeading', label: 'Banner Heading', type: 'input' },
+      { key: 'plansBannerDesc', label: 'Banner Description', type: 'textarea' },
+    ],
+  },
+  {
+    title: 'Leaderboard — Section Header',
+    fields: [
+      { key: 'leaderboardHeaderTitle', label: 'Section Title', type: 'input' },
+      { key: 'leaderboardHeaderSubtitle', label: 'Section Subtitle', type: 'input' },
+    ],
+  },
+  {
+    title: 'Leaderboard — Badge System',
+    fields: [
+      { key: 'leaderboardBadgeSystemTitle', label: 'Badge System Title', type: 'input' },
+      { key: 'leaderboardBadgeSystemDesc', label: 'Badge System Description', type: 'textarea' },
+    ],
+  },
+  {
+    title: 'Leaderboard — Empty State',
+    fields: [
+      { key: 'leaderboardEmptyTitle', label: 'Empty State Title', type: 'input' },
+      { key: 'leaderboardEmptyMsg', label: 'Empty State Message', type: 'input' },
+    ],
+  },
+  {
+    title: 'Products Suite — Section Header',
+    fields: [
+      { key: 'productsHeaderTitle', label: 'Section Title', type: 'input' },
+      { key: 'productsHeaderSubtitle', label: 'Section Subtitle', type: 'input' },
+    ],
+  },
+  {
+    title: 'Products Suite — Banner',
+    fields: [
+      { key: 'productsBannerHeading', label: 'Banner Heading', type: 'input' },
+      { key: 'productsBannerDesc', label: 'Banner Description', type: 'textarea' },
+    ],
+  },
+];
+
 const loginGroups: FieldGroup[] = [
   {
     title: 'Left Panel — Hero',
@@ -239,7 +321,7 @@ export function AdminContentManager() {
     setForm(siteContent);
   }, [siteContent]);
 
-  const groups = tab === 'landing' ? landingGroups : loginGroups;
+  const groups = tab === 'landing' ? landingGroups : tab === 'login' ? loginGroups : partnerGroups;
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -343,6 +425,13 @@ export function AdminContentManager() {
         >
           <LogIn className="h-4 w-4" />
           Login Page
+        </button>
+        <button
+          onClick={() => setTab('partner')}
+          className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${tab === 'partner' ? 'border-zubkas-700 text-zubkas-700' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+        >
+          <Users className="h-4 w-4" />
+          Partner Panel
         </button>
       </div>
 

@@ -1,6 +1,6 @@
 import type {
   User, Partner, Customer, Lead, Employee, Category,
-  Announcement, Product, Notification, Plan, AppSettings,
+  Announcement, Product, Plan, AppSettings,
   CommissionTransaction, SiteContent, Role,
 } from '@/types';
 
@@ -141,18 +141,6 @@ export const products: Product[] = [
   { id: 'p-5', name: 'Zubkas Payroll', description: 'Automated payroll processing with tax compliance and employee self-service portal.', icon: 'Wallet', features: ['Auto tax calculation', 'Payslip generation', 'Employee portal', 'Compliance reports'], commissionEligible: true, showOnLanding: true, monthlyPrice: 699, yearlyPrice: 6990, status: 'Active', launchDate: '2025-06-15' },
   { id: 'p-6', name: 'Zubkas CRM', description: 'Customer relationship management with lead scoring, pipeline tracking, and automation.', icon: 'Users', features: ['Lead scoring', 'Pipeline tracking', 'Email automation', 'Custom dashboards'], commissionEligible: true, showOnLanding: true, monthlyPrice: 899, yearlyPrice: 8990, status: 'Beta', launchDate: '2026-01-01' },
   { id: 'p-7', name: 'Zubkas AI Assistant', description: 'AI-powered business assistant that integrates across all Zubkas products for smart automation.', icon: 'Sparkles', features: ['Natural language queries', 'Cross-product insights', 'Automated reports', 'Smart recommendations'], commissionEligible: false, showOnLanding: false, monthlyPrice: null, yearlyPrice: null, status: 'Coming Soon' },
-];
-
-export const notifications: Notification[] = [
-  { id: 'n-1', userId: 'partner-1', title: 'Commission Earned', message: 'You earned ₹750 commission from Aakash Malhotra (Malhotra Textiles) this month.', type: 'commission', date: '2026-10-07', read: false },
-  { id: 'n-2', userId: 'partner-1', title: 'Payment Unpaid Alert', message: 'Meera Joshi (Joshi Fashions) has an unpaid subscription. Commission for this month has been blocked.', type: 'payment', date: '2026-10-06', read: false },
-  { id: 'n-3', userId: 'partner-1', title: 'New Product Launch', message: 'Zubkas POS v3.0 is now live! Earn 15% commission on new subscriptions.', type: 'announcement', date: '2026-10-05', read: true },
-  { id: 'n-4', userId: 'partner-1', title: 'Lead Locked', message: 'Your lead "Sunrise Industries" is locked until October 9.', type: 'lead', date: '2026-10-06', read: false },
-  { id: 'n-5', userId: 'partner-2', title: 'Commission Earned', message: 'You earned ₹900 commission from Pooja Reddy (Reddy Foods) this month.', type: 'commission', date: '2026-10-07', read: false },
-  { id: 'n-6', userId: 'partner-2', title: 'Payment Unpaid Alert', message: 'Sneha Agarwal (Agarwal Pharma) has an unpaid subscription. Commission blocked for this month.', type: 'payment', date: '2026-10-06', read: false },
-  { id: 'n-7', userId: 'admin', title: 'New Partner Registered', message: 'Suresh Patel (RetailBoost Partners) joined the partner program.', type: 'system', date: '2025-03-22', read: true },
-  { id: 'n-8', userId: 'partner-3', title: 'Lead Converted', message: 'Your lead "Apex Construction" has been converted to a customer!', type: 'lead', date: '2026-09-15', read: true },
-  { id: 'n-9', userId: 'partner-4', title: 'New Badge Earned', message: 'Congratulations! You earned the "New Champion" badge.', type: 'system', date: '2026-09-01', read: true },
 ];
 
 export const leaderboard = {
@@ -333,4 +321,31 @@ export const defaultSiteContent: SiteContent = {
   loginInstallButton: 'Install Zubkas App',
   loginInstalledText: 'App installed',
   loginFooterPoweredBy: 'Powered by',
+  commissionRulesNotice: 'Monthly plans: Earn commission every month for up to {capMonths} months from the subscription start date. After {capMonths} months, commission payout stops automatically.\nYearly plans: Earn a one-time lump-sum commission for that year.\nUnpaid customers: Commission is automatically blocked for that month and resumes once payment is received.',
+  commissionFreeTitle: 'Free Plan',
+  commissionFreeValue: '5% commission',
+  commissionFreeDesc: 'Monthly recurring',
+  commissionPremiumTitle: 'Premium Plan',
+  commissionPremiumValue: '15% commission',
+  commissionPremiumDesc: 'Monthly or yearly',
+  commissionCapTitle: '1-Year Cap',
+  commissionCapValue: '{capMonths} months max',
+  commissionCapDesc: 'Then payout stops',
+  // Partner panel — Plans & Features
+  plansHeaderTitle: 'Plans & Features',
+  plansHeaderSubtitle: 'Subscription plans and commission rates available for your referrals',
+  plansBannerHeading: 'Earn Commission on Every Referral',
+  plansBannerDesc: 'Refer customers to any Zubkas plan and earn recurring commission for up to 12 months on monthly plans, or a one-time lump-sum on yearly plans.',
+  // Partner panel — Leaderboard & Badges
+  leaderboardHeaderTitle: 'Leaderboard & Badges',
+  leaderboardHeaderSubtitle: 'See how you rank among all partners',
+  leaderboardBadgeSystemTitle: 'Badge System',
+  leaderboardBadgeSystemDesc: 'Badges are earned automatically when you reach milestones. Keep growing to unlock them!',
+  leaderboardEmptyTitle: 'No data yet',
+  leaderboardEmptyMsg: 'Partners will appear here once they have activity',
+  // Partner panel — Products Suite
+  productsHeaderTitle: 'Products Suite',
+  productsHeaderSubtitle: 'Zubkas products you can refer and earn commission on',
+  productsBannerHeading: 'Earn Commission on Every Referral',
+  productsBannerDesc: 'Refer customers to any Zubkas product and earn up to 15% recurring commission for 12 months on monthly plans, or a one-time lump-sum on yearly plans.',
 };
